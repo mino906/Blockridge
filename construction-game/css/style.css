@@ -1,0 +1,162 @@
+/* ============================================================
+   BuildRight — style.css
+   Handles: canvas sizing, HUD overlay, crosshair,
+   block indicator, controls hint, pointer-lock prompt
+   ============================================================ */
+
+/* --- Reset & Base ------------------------------------------ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #000;
+  overflow: hidden;           /* No scrollbars — the canvas fills everything */
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #fff;
+}
+
+/* --- Game Canvas ------------------------------------------- */
+#renderCanvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  touch-action: none;         /* Prevent mobile scroll interference */
+}
+
+/* --- HUD (Heads-Up Display) -------------------------------- */
+/* The HUD sits on top of the canvas using absolute positioning.
+   pointer-events: none lets mouse clicks pass through to the canvas. */
+#hud {
+  position: fixed;
+  inset: 0;                   /* Shorthand for top/right/bottom/left: 0 */
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* --- Crosshair --------------------------------------------- */
+#crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 28px;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 0 4px rgba(0,0,0,0.9);
+  user-select: none;
+  line-height: 1;
+}
+
+/* --- Block Indicator --------------------------------------- */
+/* Shows the currently selected block type (bottom center) */
+#block-indicator {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 8px 20px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(6px);
+}
+
+#block-icon {
+  font-size: 20px;
+}
+
+/* --- Controls Hint ----------------------------------------- */
+/* Shown top-right; fades out after game starts */
+#controls-hint {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  padding: 14px 18px;
+  font-size: 13px;
+  line-height: 1.8;
+  backdrop-filter: blur(6px);
+  transition: opacity 0.6s ease;
+}
+
+#controls-hint.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* --- Pointer Lock Prompt ----------------------------------- */
+/* Full-screen overlay shown before the player clicks to start */
+#lock-prompt {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  transition: opacity 0.4s ease;
+}
+
+#lock-prompt.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* The centered card inside the prompt */
+#lock-box {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+#lock-box h1 {
+  font-size: 3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+#lock-box p {
+  font-size: 1.1rem;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.05em;
+}
+
+#start-btn {
+  margin-top: 12px;
+  padding: 14px 40px;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: #e8a020;        /* Construction orange — thematic, not generic */
+  color: #1a0f00;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  pointer-events: all;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+#start-btn:hover {
+  background: #f5b534;
+  transform: translateY(-2px);
+}
+
+#start-btn:active {
+  transform: translateY(0px);
+}

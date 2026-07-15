@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BuildRight — Construction Learning Game</title>
+
+  <!-- Babylon.js core engine (CDN — no download needed) -->
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+
+  <!-- Babylon.js materials extension for richer block textures -->
+  <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+
+  <!-- Perlin noise library for terrain generation (CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- The canvas is the game's rendering surface — Babylon.js draws everything here -->
+  <canvas id="renderCanvas"></canvas>
+
+  <!-- HUD: heads-up display overlaid on the canvas -->
+  <div id="hud">
+
+    <!-- Crosshair shown in the center of the screen -->
+    <div id="crosshair">+</div>
+
+    <!-- Block type indicator: shows what block the player currently has selected -->
+    <div id="block-indicator">
+      <span id="block-icon">🟫</span>
+      <span id="block-name">Dirt</span>
+    </div>
+
+    <!-- Controls reminder shown at the start -->
+    <div id="controls-hint">
+      <strong>Controls</strong><br/>
+      WASD — Move &nbsp;|&nbsp; Mouse — Look<br/>
+      Space — Jump &nbsp;|&nbsp; Shift — Sprint<br/>
+      Left Click — Remove &nbsp;|&nbsp; Right Click — Place<br/>
+      1 / 2 — Switch Block &nbsp;|&nbsp; Click screen to lock mouse
+    </div>
+
+  </div>
+
+  <!-- Pointer lock prompt: shown when the mouse is not locked -->
+  <div id="lock-prompt">
+    <div id="lock-box">
+      <h1>🏗️ BuildRight</h1>
+      <p>A 3D Construction Learning Game</p>
+      <button id="start-btn">Click to Start</button>
+    </div>
+  </div>
+
+  <!-- Load game modules in dependency order -->
+  <script src="js/blocks.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+
+</body>
+</html>
