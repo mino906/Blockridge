@@ -5,18 +5,144 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BuildRight — Construction Learning Game</title>
 
+  <!-- CDN libraries load first, synchronously, before any game code -->
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
-  <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
 
-  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #000;
+      overflow: hidden;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: #fff;
+    }
+
+    #renderCanvas {
+      display: block;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      touch-action: none;
+      z-index: 1;
+    }
+
+    #hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    #crosshair {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 28px;
+      font-weight: 300;
+      color: rgba(255,255,255,0.85);
+      text-shadow: 0 0 4px rgba(0,0,0,0.9);
+      user-select: none;
+    }
+
+    #block-indicator {
+      position: absolute;
+      bottom: 24px; left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(0,0,0,0.55);
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 10px;
+      padding: 8px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      backdrop-filter: blur(6px);
+    }
+
+    #block-icon { font-size: 20px; }
+
+    #controls-hint {
+      position: absolute;
+      top: 20px; right: 20px;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 13px;
+      line-height: 1.8;
+      backdrop-filter: blur(6px);
+      transition: opacity 0.6s ease;
+    }
+
+    #controls-hint.hidden { opacity: 0; }
+
+    #paused-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.6);
+      z-index: 150;
+      font-size: 2rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    #paused-overlay.visible { display: flex; }
+
+    #lock-prompt {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.88);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      transition: opacity 0.4s ease;
+    }
+    #lock-prompt.hidden {
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+    }
+
+    #lock-box {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    #lock-box h1 { font-size: 3rem; font-weight: 800; }
+    #lock-box p  { font-size: 1.1rem; color: rgba(255,255,255,0.6); letter-spacing: 0.05em; }
+
+    #start-btn {
+      margin-top: 12px;
+      padding: 14px 40px;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: #e8a020;
+      color: #1a0f00;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.1s ease;
+    }
+    #start-btn:hover  { background: #f5b534; transform: translateY(-2px); }
+    #start-btn:active { transform: translateY(0); }
+  </style>
 </head>
 <body>
 
-  <!-- 1. Game canvas — z-index: 1 -->
   <canvas id="renderCanvas"></canvas>
 
-  <!-- 2. HUD overlay — z-index: 20, pointer-events: none so clicks reach canvas -->
   <div id="hud">
     <div id="crosshair">+</div>
     <div id="block-indicator">
@@ -32,10 +158,8 @@
     </div>
   </div>
 
-  <!-- 3. Paused overlay — z-index: 150 (shown when pointer lock releases mid-game) -->
   <div id="paused-overlay">⏸ PAUSED — Click to Resume</div>
 
-  <!-- 4. Start prompt — z-index: 200 (topmost, OUTSIDE #hud so pointer-events work) -->
   <div id="lock-prompt">
     <div id="lock-box">
       <h1>🏗️ BuildRight</h1>
@@ -44,12 +168,360 @@
     </div>
   </div>
 
-  <!-- Scripts — load in dependency order -->
-  <script src="js/blocks.js"></script>
-  <script src="js/world.js"></script>
-  <script src="js/player.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/main.js"></script>
+  <!-- ═══════════════════════════════════════════════════════
+       ALL GAME SCRIPTS INLINE — zero load-order issues
+       Scripts run top-to-bottom synchronously after CDNs load
+       ═══════════════════════════════════════════════════════ -->
+
+  <!-- blocks.js -->
+  <script>
+    const BLOCK_TYPES = {
+      dirt:     { id:"dirt",     name:"Dirt",        emoji:"🟫", color:"#7a5230" },
+      grass:    { id:"grass",    name:"Grass",        emoji:"🟩", color:"#4a7c3f" },
+      stone:    { id:"stone",    name:"Stone",        emoji:"⬜", color:"#888888" },
+      concrete: { id:"concrete", name:"Concrete",     emoji:"🔲", color:"#b0a898" },
+      wood:     { id:"wood",     name:"Wood Plank",   emoji:"🪵", color:"#c8852a" },
+    };
+
+    const PHASE_1_HOTBAR = ["dirt", "stone"];
+    const blockMaterials = {};
+
+    function initBlockMaterials(scene) {
+      Object.values(BLOCK_TYPES).forEach((b) => {
+        const mat = new BABYLON.StandardMaterial("mat_" + b.id, scene);
+        mat.diffuseColor = BABYLON.Color3.FromHexString(b.color);
+        mat.ambientColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+        blockMaterials[b.id] = mat;
+      });
+    }
+
+    function getBlockMaterial(blockId) {
+      const mat = blockMaterials[blockId];
+      if (!mat) throw new Error("No material for block: " + blockId);
+      return mat;
+    }
+  </script>
+
+  <!-- world.js -->
+  <script>
+    const WORLD_CONFIG = {
+      SIZE:        40,
+      MAX_HEIGHT:  6,
+      BASE_HEIGHT: 1,
+      NOISE_SCALE: 0.12,
+    };
+
+    const blockMap = new Map();
+    let _worldScene = null;
+    let _noise      = null;
+
+    function toKey(x, y, z) {
+      return Math.round(x) + "," + Math.round(y) + "," + Math.round(z);
+    }
+
+    function getTerrainHeight(x, z) {
+      const v = _noise.noise2D(x * WORLD_CONFIG.NOISE_SCALE, z * WORLD_CONFIG.NOISE_SCALE);
+      return Math.floor(((v + 1) / 2) * WORLD_CONFIG.MAX_HEIGHT) + WORLD_CONFIG.BASE_HEIGHT;
+    }
+
+    function spawnBlock(x, y, z, blockId) {
+      const key = toKey(x, y, z);
+      if (blockMap.has(key)) return null;
+      const mesh = BABYLON.MeshBuilder.CreateBox("block_" + key, { size: 0.99 }, _worldScene);
+      mesh.position.set(x, y, z);
+      mesh.material  = getBlockMaterial(blockId);
+      mesh.metadata  = { blockId, gridX: x, gridY: y, gridZ: z };
+      mesh.isPickable = true;
+      blockMap.set(key, mesh);
+      return mesh;
+    }
+
+    function placeBlock(x, y, z, blockId) {
+      if (blockMap.has(toKey(x, y, z))) return false;
+      spawnBlock(x, y, z, blockId);
+      return true;
+    }
+
+    function removeBlock(x, y, z) {
+      const key  = toKey(x, y, z);
+      const mesh = blockMap.get(key);
+      if (!mesh) return false;
+      mesh.dispose();
+      blockMap.delete(key);
+      return true;
+    }
+
+    function getBlock(x, y, z) {
+      return blockMap.get(toKey(x, y, z)) || null;
+    }
+
+    function initWorld(scene) {
+      _worldScene = scene;
+      _noise      = new SimplexNoise();
+      const half  = Math.floor(WORLD_CONFIG.SIZE / 2);
+
+      for (let x = -half; x < half; x++) {
+        for (let z = -half; z < half; z++) {
+          const h = getTerrainHeight(x, z);
+          spawnBlock(x, h, z, h > WORLD_CONFIG.BASE_HEIGHT ? "grass" : "dirt");
+          for (let y = h - 1; y > 0; y--) spawnBlock(x, y, z, "dirt");
+          spawnBlock(x, 0, z, "stone");
+        }
+      }
+      console.log("[world] Generated " + blockMap.size + " blocks");
+    }
+  </script>
+
+  <!-- player.js -->
+  <script>
+    const PLAYER_CONFIG = {
+      MOVE_SPEED:   0.12,
+      SPRINT_SPEED: 0.22,
+      JUMP_FORCE:   0.18,
+      GRAVITY:      0.012,
+      EYE_HEIGHT:   1.7,
+      REACH:        6,
+      FLOOR_OFFSET: 0.5,
+    };
+
+    let _camera           = null;
+    let _playerScene      = null;
+    let _playerCanvas     = null;
+    const _keys           = new Set();
+    let _verticalVelocity = 0;
+    let _isOnGround       = false;
+    let _selectedBlockId  = "dirt";
+    let _lastActionTime   = 0;
+    const ACTION_COOLDOWN = 220;
+    let _yaw   = 0;
+    let _pitch = 0;
+    const PITCH_LIMIT       = Math.PI / 2.1;
+    const MOUSE_SENSITIVITY = 0.002;
+
+    function initPlayer(scene, canvas) {
+      _playerScene  = scene;
+      _playerCanvas = canvas;
+
+      _camera = new BABYLON.UniversalCamera(
+        "playerCamera",
+        new BABYLON.Vector3(0, PLAYER_CONFIG.EYE_HEIGHT + 5, -5),
+        scene
+      );
+      _camera.minZ = 0.1;
+      _camera.inputs.clear();
+      _camera.setTarget(new BABYLON.Vector3(0, PLAYER_CONFIG.EYE_HEIGHT + 4, 0));
+
+      window.addEventListener("keydown", (e) => {
+        _keys.add(e.code);
+        if (e.code === "Digit1") _selectBlock(PHASE_1_HOTBAR[0]);
+        if (e.code === "Digit2") _selectBlock(PHASE_1_HOTBAR[1]);
+      });
+      window.addEventListener("keyup", (e) => _keys.delete(e.code));
+
+      document.addEventListener("mousemove", _onMouseMove);
+      canvas.addEventListener("mousedown",   _onMouseDown);
+      canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+      scene.onBeforeRenderObservable.add(_playerUpdate);
+      console.log("[player] Initialized");
+    }
+
+    function _onMouseMove(e) {
+      if (document.pointerLockElement !== _playerCanvas) return;
+      _yaw   += e.movementX * MOUSE_SENSITIVITY;
+      _pitch -= e.movementY * MOUSE_SENSITIVITY;
+      _pitch  = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, _pitch));
+      const cosP = Math.cos(_pitch);
+      _camera.setTarget(new BABYLON.Vector3(
+        _camera.position.x + Math.sin(_yaw) * cosP,
+        _camera.position.y + Math.sin(_pitch),
+        _camera.position.z + Math.cos(_yaw) * cosP
+      ));
+    }
+
+    function _onMouseDown(e) {
+      if (document.pointerLockElement !== _playerCanvas) return;
+      const now = Date.now();
+      if (now - _lastActionTime < ACTION_COOLDOWN) return;
+      _lastActionTime = now;
+
+      const ray = _playerScene.createPickingRay(
+        _playerCanvas.width / 2,
+        _playerCanvas.height / 2,
+        BABYLON.Matrix.Identity(),
+        _camera
+      );
+      const hit = _playerScene.pickWithRay(
+        ray,
+        (m) => m.isPickable && m.metadata && m.metadata.blockId
+      );
+      if (!hit || !hit.hit || hit.distance > PLAYER_CONFIG.REACH) return;
+
+      const { gridX, gridY, gridZ } = hit.pickedMesh.metadata;
+
+      if (e.button === 0) {
+        removeBlock(gridX, gridY, gridZ);
+      } else if (e.button === 2) {
+        const n = hit.getNormal(true);
+        if (!n) return;
+        const px = Math.round(_camera.position.x);
+        const pz = Math.round(_camera.position.z);
+        const py = Math.round(_camera.position.y - PLAYER_CONFIG.EYE_HEIGHT);
+        const bx = gridX + Math.round(n.x);
+        const by = gridY + Math.round(n.y);
+        const bz = gridZ + Math.round(n.z);
+        if (bx === px && bz === pz && (by === py || by === py + 1)) return;
+        placeBlock(bx, by, bz, _selectedBlockId);
+      }
+    }
+
+    function _selectBlock(blockId) {
+      _selectedBlockId = blockId;
+      updateBlockIndicator(blockId);
+    }
+
+    function _playerUpdate() {
+      if (!_camera) return;
+      const pos      = _camera.position;
+      const speed    = (_keys.has("ShiftLeft") || _keys.has("ShiftRight"))
+                         ? PLAYER_CONFIG.SPRINT_SPEED
+                         : PLAYER_CONFIG.MOVE_SPEED;
+
+      const fwd   = new BABYLON.Vector3(Math.sin(_yaw), 0, Math.cos(_yaw));
+      const right = new BABYLON.Vector3(Math.cos(_yaw), 0, -Math.sin(_yaw));
+      const move  = BABYLON.Vector3.Zero();
+
+      if (_keys.has("KeyW")) move.addInPlace(fwd);
+      if (_keys.has("KeyS")) move.subtractInPlace(fwd);
+      if (_keys.has("KeyA")) move.subtractInPlace(right);
+      if (_keys.has("KeyD")) move.addInPlace(right);
+
+      if (move.length() > 0) {
+        move.normalize().scaleInPlace(speed);
+        pos.addInPlace(move);
+      }
+
+      _verticalVelocity -= PLAYER_CONFIG.GRAVITY;
+      pos.y += _verticalVelocity;
+
+      const groundY   = _findGround(Math.round(pos.x), pos.y, Math.round(pos.z));
+      const standingY = groundY + 1 + PLAYER_CONFIG.EYE_HEIGHT + PLAYER_CONFIG.FLOOR_OFFSET;
+
+      if (pos.y <= standingY) {
+        pos.y             = standingY;
+        _verticalVelocity = 0;
+        _isOnGround       = true;
+      } else {
+        _isOnGround = false;
+      }
+
+      if (_keys.has("Space") && _isOnGround) {
+        _verticalVelocity = PLAYER_CONFIG.JUMP_FORCE;
+        _isOnGround       = false;
+      }
+
+      const half = Math.floor(WORLD_CONFIG.SIZE / 2) - 1;
+      pos.x = Math.max(-half, Math.min(half, pos.x));
+      pos.z = Math.max(-half, Math.min(half, pos.z));
+    }
+
+    function _findGround(x, fromY, z) {
+      for (let y = Math.floor(fromY); y >= -2; y--) {
+        if (getBlock(x, y, z)) return y;
+      }
+      return -2;
+    }
+  </script>
+
+  <!-- ui.js -->
+  <script>
+    let _gameStarted = false;
+
+    function initUI(canvas) {
+      const startBtn      = document.getElementById("start-btn");
+      const lockPrompt    = document.getElementById("lock-prompt");
+      const pausedOverlay = document.getElementById("paused-overlay");
+      const controlsHint  = document.getElementById("controls-hint");
+
+      startBtn.addEventListener("click", () => {
+        lockPrompt.classList.add("hidden");
+        _gameStarted = true;
+        setTimeout(() => {
+          canvas.requestPointerLock();
+        }, 50);
+      });
+
+      document.addEventListener("pointerlockchange", () => {
+        if (document.pointerLockElement === canvas) {
+          pausedOverlay.classList.remove("visible");
+        } else if (_gameStarted) {
+          pausedOverlay.classList.add("visible");
+        }
+      });
+
+      pausedOverlay.addEventListener("click", () => canvas.requestPointerLock());
+
+      setTimeout(() => controlsHint.classList.add("hidden"), 8000);
+    }
+
+    function updateBlockIndicator(blockId) {
+      const b = BLOCK_TYPES[blockId];
+      if (!b) return;
+      document.getElementById("block-icon").textContent = b.emoji;
+      document.getElementById("block-name").textContent = b.name;
+    }
+  </script>
+
+  <!-- main.js — runs last, all functions above are already defined -->
+  <script>
+    (function () {
+      try {
+        if (typeof BABYLON      === "undefined") throw new Error("Babylon.js CDN failed to load. Check your internet connection.");
+        if (typeof SimplexNoise === "undefined") throw new Error("SimplexNoise CDN failed to load. Check your internet connection.");
+
+        const canvas = document.getElementById("renderCanvas");
+        const engine = new BABYLON.Engine(canvas, true);
+        const scene  = new BABYLON.Scene(engine);
+
+        scene.clearColor = new BABYLON.Color4(0.53, 0.81, 0.98, 1.0);
+        scene.fogMode    = BABYLON.Scene.FOGMODE_LINEAR;
+        scene.fogStart   = 28;
+        scene.fogEnd     = 48;
+        scene.fogColor   = new BABYLON.Color3(0.53, 0.81, 0.98);
+
+        const amb = new BABYLON.HemisphericLight("amb", new BABYLON.Vector3(0, 1, 0), scene);
+        amb.intensity = 0.85;
+
+        const sun = new BABYLON.DirectionalLight("sun", new BABYLON.Vector3(-1,-2,-1).normalize(), scene);
+        sun.intensity = 0.6;
+
+        initBlockMaterials(scene);
+        initWorld(scene);
+        initPlayer(scene, canvas);
+        initUI(canvas);
+        updateBlockIndicator(PHASE_1_HOTBAR[0]);
+
+        engine.runRenderLoop(() => scene.render());
+        window.addEventListener("resize", () => engine.resize());
+
+        console.log("[main] BuildRight Phase 1 running ✅");
+
+      } catch (err) {
+        document.body.innerHTML = `
+          <div style="position:fixed;inset:0;background:#1a0a00;color:#ff6b35;
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            font-family:monospace;padding:40px;font-size:14px;line-height:1.8;text-align:center;">
+            <div style="font-size:2rem;margin-bottom:20px;">⚠️ BuildRight — Startup Error</div>
+            <div style="background:#2a1000;border:1px solid #ff6b35;border-radius:8px;
+              padding:20px 30px;max-width:700px;text-align:left;word-break:break-word;">
+              ${err.message}<br/><br/>${err.stack || ""}
+            </div>
+            <div style="margin-top:20px;color:#aaa;">Open the browser Console (F12) for more details.</div>
+          </div>`;
+        console.error("[main] Fatal error:", err);
+      }
+    })();
+  </script>
 
 </body>
 </html>
