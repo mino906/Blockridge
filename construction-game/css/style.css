@@ -1,10 +1,7 @@
 /* ============================================================
    BuildRight — style.css
-   Handles: canvas sizing, HUD overlay, crosshair,
-   block indicator, controls hint, pointer-lock prompt
    ============================================================ */
 
-/* --- Reset & Base ------------------------------------------ */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -13,7 +10,7 @@
 
 body {
   background: #000;
-  overflow: hidden;           /* No scrollbars — the canvas fills everything */
+  overflow: hidden;
   font-family: 'Segoe UI', system-ui, sans-serif;
   color: #fff;
 }
@@ -21,19 +18,21 @@ body {
 /* --- Game Canvas ------------------------------------------- */
 #renderCanvas {
   display: block;
+  position: fixed;
+  top: 0; left: 0;
   width: 100vw;
   height: 100vh;
-  touch-action: none;         /* Prevent mobile scroll interference */
+  touch-action: none;
+  z-index: 1;
 }
 
-/* --- HUD (Heads-Up Display) -------------------------------- */
-/* The HUD sits on top of the canvas using absolute positioning.
-   pointer-events: none lets mouse clicks pass through to the canvas. */
+/* --- HUD --------------------------------------------------- */
+/* z-index: 20 so it sits above the canvas (z:1) but below the prompt (z:100) */
 #hud {
   position: fixed;
-  inset: 0;                   /* Shorthand for top/right/bottom/left: 0 */
-  pointer-events: none;
-  z-index: 10;
+  inset: 0;
+  pointer-events: none;   /* Pass clicks through to canvas */
+  z-index: 20;
 }
 
 /* --- Crosshair --------------------------------------------- */
@@ -51,7 +50,6 @@ body {
 }
 
 /* --- Block Indicator --------------------------------------- */
-/* Shows the currently selected block type (bottom center) */
 #block-indicator {
   position: absolute;
   bottom: 24px;
@@ -70,12 +68,9 @@ body {
   backdrop-filter: blur(6px);
 }
 
-#block-icon {
-  font-size: 20px;
-}
+#block-icon { font-size: 20px; }
 
 /* --- Controls Hint ----------------------------------------- */
-/* Shown top-right; fades out after game starts */
 #controls-hint {
   position: absolute;
   top: 20px;
@@ -96,25 +91,26 @@ body {
 }
 
 /* --- Pointer Lock Prompt ----------------------------------- */
-/* Full-screen overlay shown before the player clicks to start */
+/* Lives OUTSIDE #hud — has its own z-index and full pointer-events */
 #lock-prompt {
   position: fixed;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.82);
+  background: rgba(0, 0, 0, 0.88);
   backdrop-filter: blur(8px);
-  z-index: 100;
+  z-index: 200;                 /* Above everything */
   transition: opacity 0.4s ease;
+  pointer-events: all;          /* This overlay IS clickable */
 }
 
 #lock-prompt.hidden {
   opacity: 0;
   pointer-events: none;
+  visibility: hidden;           /* Also hide from accessibility tree */
 }
 
-/* The centered card inside the prompt */
 #lock-box {
   text-align: center;
   display: flex;
@@ -143,7 +139,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  background: #e8a020;        /* Construction orange — thematic, not generic */
+  background: #e8a020;
   color: #1a0f00;
   border: none;
   border-radius: 8px;
@@ -152,11 +148,24 @@ body {
   transition: background 0.2s ease, transform 0.1s ease;
 }
 
-#start-btn:hover {
-  background: #f5b534;
-  transform: translateY(-2px);
+#start-btn:hover  { background: #f5b534; transform: translateY(-2px); }
+#start-btn:active { transform: translateY(0px); }
+
+/* --- Paused overlay (shows when pointer lock is released) -- */
+#paused-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.6);
+  z-index: 150;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #fff;
 }
 
-#start-btn:active {
-  transform: translateY(0px);
+#paused-overlay.visible {
+  display: flex;
 }
