@@ -175,30 +175,150 @@
 
   <!-- blocks.js -->
   <script>
+    // ─── Block Definitions ───────────────────────────────────────
+    // textures: single URL string  → all faces get that texture
+    //           object { top, side, bottom } → per-face textures (grass style)
+    // fallbackColor: shown instantly while texture downloads
     const BLOCK_TYPES = {
-      dirt:     { id:"dirt",     name:"Dirt",        emoji:"🟫", color:"#7a5230" },
-      grass:    { id:"grass",    name:"Grass",        emoji:"🟩", color:"#4a7c3f" },
-      stone:    { id:"stone",    name:"Stone",        emoji:"⬜", color:"#888888" },
-      concrete: { id:"concrete", name:"Concrete",     emoji:"🔲", color:"#b0a898" },
-      wood:     { id:"wood",     name:"Wood Plank",   emoji:"🪵", color:"#c8852a" },
+      dirt: {
+        id: "dirt", name: "Dirt", emoji: "🟫",
+        fallbackColor: "#7a5230",
+        texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/minecraft/dirt.png",
+      },
+      grass: {
+        id: "grass", name: "Grass", emoji: "🟩",
+        fallbackColor: "#4a7c3f",
+        // Grass uses per-face textures — top is green, sides show dirt+grass edge
+        texture: {
+          top:    "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/minecraft/grass_top.png",
+          side:   "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/minecraft/grass_side.png",
+          bottom: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/minecraft/dirt.png",
+        },
+      },
+      stone: {
+        id: "stone", name: "Stone", emoji: "⬜",
+        fallbackColor: "#888888",
+        texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/minecraft/stone.png",
+      },
+      concrete: {
+        id: "concrete", name: "Concrete", emoji: "🔲",
+        fallbackColor: "#b0a898",
+        // Use cobblestone texture — closest to rough concrete look available free
+        texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/minecraft/cobblestone.png",
+      },
+      wood: {
+        id: "wood", name: "Wood Plank", emoji: "🪵",
+        fallbackColor: "#c8852a",
+        texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/minecraft/planks_oak.png",
+      },
+      sand: {
+        id: "sand", name: "Sand", emoji: "🟡",
+        fallbackColor: "#e8d59a",
+        texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/minecraft/sand.png",
+      },
+      iron: {
+        id: "iron", name: "Iron / Rebar", emoji: "🩶",
+        fallbackColor: "#a0a0b0",
+        texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/minecraft/iron_block.png",
+      },
     };
 
+    // Phase 1 hotbar: dirt + stone. More unlock in Phase 2.
     const PHASE_1_HOTBAR = ["dirt", "stone"];
+
+    // Cache: blockId → material (or MultiMaterial for grass)
     const blockMaterials = {};
 
+    // ─── Texture helper ──────────────────────────────────────────
+    /**
+     * Creates a StandardMaterial with a texture URL.
+     * While the texture downloads, the fallback color shows immediately
+     * so the world never looks completely broken.
+     *
+     * uScale / vScale = 1 means the texture tiles exactly once per face.
+     * Minecraft textures are pixel-art (16x16) so we keep filtering
+     * NEAREST to get crisp pixels instead of blurry interpolation.
+     */
+    function _makeMat(name, url, scene, fallbackHex) {
+      const mat = new BABYLON.StandardMaterial(name, scene);
+
+      // Show the fallback color right away
+      mat.diffuseColor = BABYLON.Color3.FromHexString(fallbackHex);
+      mat.ambientColor = new BABYLON.Color3(0.25, 0.25, 0.25);
+
+      // Load texture asynchronously
+      const tex = new BABYLON.Texture(url, scene,
+        /* noMipmap  */ false,
+        /* invertY   */ false,
+        /* samplingMode */ BABYLON.Texture.NEAREST_SAMPLINGMODE
+      );
+
+      tex.onLoadObservable.addOnce(() => {
+        mat.diffuseTexture = tex;
+        mat.diffuseColor   = new BABYLON.Color3(1, 1, 1); // remove tint once texture loads
+      });
+
+      return mat;
+    }
+
+    /**
+     * Builds the material(s) for every block type and caches them.
+     *
+     * For grass we create a MultiMaterial with 3 sub-materials:
+     *   subMaterial index 0 → sides  (Babylon face order: right, left, top, bottom, front, back)
+     *   subMaterial index 1 → top
+     *   subMaterial index 2 → bottom
+     *
+     * Babylon.js CreateBox face indices:
+     *   0 = +X (right),  1 = -X (left)
+     *   2 = +Y (top),    3 = -Y (bottom)
+     *   4 = +Z (front),  5 = -Z (back)
+     */
     function initBlockMaterials(scene) {
       Object.values(BLOCK_TYPES).forEach((b) => {
-        const mat = new BABYLON.StandardMaterial("mat_" + b.id, scene);
-        mat.diffuseColor = BABYLON.Color3.FromHexString(b.color);
-        mat.ambientColor = new BABYLON.Color3(0.2, 0.2, 0.2);
-        blockMaterials[b.id] = mat;
+        if (typeof b.texture === "string") {
+          // ── Simple block: same texture on all faces ──
+          blockMaterials[b.id] = _makeMat("mat_" + b.id, b.texture, scene, b.fallbackColor);
+
+        } else {
+          // ── Multi-face block (grass): different top / side / bottom ──
+          const matSide   = _makeMat("mat_" + b.id + "_side",   b.texture.side,   scene, b.fallbackColor);
+          const matTop    = _makeMat("mat_" + b.id + "_top",    b.texture.top,    scene, "#5aac44");
+          const matBottom = _makeMat("mat_" + b.id + "_bottom", b.texture.bottom, scene, b.fallbackColor);
+
+          const multi = new BABYLON.MultiMaterial("multi_" + b.id, scene);
+          // Order matches Babylon face indices 0-5
+          // Faces: +X, -X, +Y, -Y, +Z, -Z
+          multi.subMaterials = [
+            matSide,    // 0: right
+            matSide,    // 1: left
+            matTop,     // 2: top  ← green grass
+            matBottom,  // 3: bottom ← dirt
+            matSide,    // 4: front
+            matSide,    // 5: back
+          ];
+
+          blockMaterials[b.id] = multi;
+        }
       });
     }
 
+    /**
+     * Returns the cached material for a block id.
+     * Works for both StandardMaterial and MultiMaterial.
+     */
     function getBlockMaterial(blockId) {
       const mat = blockMaterials[blockId];
-      if (!mat) throw new Error("No material for block: " + blockId);
+      if (!mat) throw new Error("[blocks] No material for: " + blockId);
       return mat;
+    }
+
+    /**
+     * Returns true if a block type uses MultiMaterial (per-face textures).
+     * world.js uses this to know whether to set subMeshes on the box mesh.
+     */
+    function isMultiFace(blockId) {
+      return blockMaterials[blockId] instanceof BABYLON.MultiMaterial;
     }
   </script>
 
@@ -227,11 +347,45 @@
     function spawnBlock(x, y, z, blockId) {
       const key = toKey(x, y, z);
       if (blockMap.has(key)) return null;
-      const mesh = BABYLON.MeshBuilder.CreateBox("block_" + key, { size: 0.99 }, _worldScene);
+
+      const mat = getBlockMaterial(blockId);
+
+      // For MultiMaterial blocks (grass), Babylon needs explicit subMeshes
+      // so it knows which sub-material maps to which face of the box.
+      // A box has 6 faces = 6 subMeshes, each covering 2 triangles (6 indices).
+      //
+      // CreateBox with faceUV/faceColors approach works too, but subMeshes
+      // is cleaner when combining with a MultiMaterial.
+      const isMulti = mat instanceof BABYLON.MultiMaterial;
+
+      const mesh = BABYLON.MeshBuilder.CreateBox(
+        "block_" + key,
+        {
+          size: 0.99,
+          // When using MultiMaterial we need the box to have separate
+          // index groups per face — wrap:false keeps UVs clean per face
+          wrap: isMulti,
+        },
+        _worldScene
+      );
+
       mesh.position.set(x, y, z);
-      mesh.material  = getBlockMaterial(blockId);
-      mesh.metadata  = { blockId, gridX: x, gridY: y, gridZ: z };
+      mesh.material   = mat;
       mesh.isPickable = true;
+      mesh.metadata   = { blockId, gridX: x, gridY: y, gridZ: z };
+
+      // For MultiMaterial: assign each of the 6 box faces to its sub-material index.
+      // Babylon's box face order: 0=right(+X), 1=left(-X), 2=top(+Y),
+      //                           3=bottom(-Y), 4=front(+Z), 5=back(-Z)
+      if (isMulti) {
+        mesh.subMeshes = [];
+        const verticesCount = mesh.getTotalVertices();
+        // Each face = 2 triangles = 6 indices; box total = 36 indices
+        for (let i = 0; i < 6; i++) {
+          new BABYLON.SubMesh(i, 0, verticesCount, i * 6, 6, mesh);
+        }
+      }
+
       blockMap.set(key, mesh);
       return mesh;
     }
@@ -483,17 +637,36 @@
         const engine = new BABYLON.Engine(canvas, true);
         const scene  = new BABYLON.Scene(engine);
 
-        scene.clearColor = new BABYLON.Color4(0.53, 0.81, 0.98, 1.0);
+        // Sky — warm afternoon blue
+        scene.clearColor = new BABYLON.Color4(0.47, 0.73, 0.95, 1.0);
+
+        // Fog — matches sky so world edge blends naturally
         scene.fogMode    = BABYLON.Scene.FOGMODE_LINEAR;
-        scene.fogStart   = 28;
-        scene.fogEnd     = 48;
-        scene.fogColor   = new BABYLON.Color3(0.53, 0.81, 0.98);
+        scene.fogStart   = 22;
+        scene.fogEnd     = 42;
+        scene.fogColor   = new BABYLON.Color3(0.47, 0.73, 0.95);
 
+        // Hemispheric light = sky light (top) + ground bounce (bottom)
+        // diffuse  = direct sky color hitting top faces
+        // specular = shine on surfaces (keep low for matte blocks)
+        // groundColor = warm earth tone bouncing up onto block undersides
         const amb = new BABYLON.HemisphericLight("amb", new BABYLON.Vector3(0, 1, 0), scene);
-        amb.intensity = 0.85;
+        amb.diffuse      = new BABYLON.Color3(0.9, 0.95, 1.0);   // cool skylight
+        amb.specular     = new BABYLON.Color3(0.1, 0.1, 0.1);    // minimal shine
+        amb.groundColor  = new BABYLON.Color3(0.4, 0.3, 0.2);    // warm ground bounce
+        amb.intensity    = 1.1;
 
-        const sun = new BABYLON.DirectionalLight("sun", new BABYLON.Vector3(-1,-2,-1).normalize(), scene);
-        sun.intensity = 0.6;
+        // Directional light = sun casting side shadows on blocks
+        // This is what makes the top face brighter than the sides —
+        // giving blocks their 3D depth without needing real-time shadows
+        const sun = new BABYLON.DirectionalLight(
+          "sun",
+          new BABYLON.Vector3(-0.6, -1.2, -0.8).normalize(),
+          scene
+        );
+        sun.diffuse    = new BABYLON.Color3(1.0, 0.95, 0.85);   // warm sunlight
+        sun.specular   = new BABYLON.Color3(0.2, 0.2, 0.15);
+        sun.intensity  = 0.75;
 
         initBlockMaterials(scene);
         initWorld(scene);
