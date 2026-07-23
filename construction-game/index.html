@@ -176,152 +176,182 @@
   <!-- blocks.js -->
   <script>
     // ─── Block Definitions ───────────────────────────────────────
-    // textures: single URL string  → all faces get that texture
-    //           object { top, side, bottom } → per-face textures (grass style)
-    // fallbackColor: shown instantly while texture downloads
     const BLOCK_TYPES = {
-      dirt: {
-        id: "dirt", name: "Dirt", emoji: "🟫",
-        fallbackColor: "#7a5230",
-        texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/minecraft/dirt.png",
-      },
-      grass: {
-        id: "grass", name: "Grass", emoji: "🟩",
-        fallbackColor: "#035708",
-        // Grass uses per-face textures — top is green, sides show dirt+grass edge
-        texture: {
-          top:    "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/minecraft/grass_top.png",
-          side:   "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/minecraft/grass_side.png",
-          bottom: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/minecraft/dirt.png",
-        },
-      },
-      stone: {
-        id: "stone", name: "Stone", emoji: "⬜",
-        fallbackColor: "#6c6c70",
-        texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/minecraft/stone.png",
-      },
-      concrete: {
-        id: "concrete", name: "Concrete", emoji: "🔲",
-        fallbackColor: "#b0a898",
-        // Use cobblestone texture — closest to rough concrete look available free
-        texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/minecraft/cobblestone.png",
-      },
-      wood: {
-        id: "wood", name: "Wood Plank", emoji: "🪵",
-        fallbackColor: "#c8852a",
-        texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/minecraft/planks_oak.png",
-      },
-      sand: {
-        id: "sand", name: "Sand", emoji: "🟡",
-        fallbackColor: "#e8d59a",
-        texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/minecraft/sand.png",
-      },
-      iron: {
-        id: "iron", name: "Iron / Rebar", emoji: "🩶",
-        fallbackColor: "#a0a0b0",
-        texture: "https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/minecraft/iron_block.png",
-      },
+      dirt:     { id:"dirt",     name:"Dirt",       emoji:"🟫" },
+      grass:    { id:"grass",    name:"Grass",       emoji:"🟩" },
+      stone:    { id:"stone",    name:"Stone",       emoji:"⬜" },
+      concrete: { id:"concrete", name:"Concrete",    emoji:"🔲" },
+      wood:     { id:"wood",     name:"Wood Plank",  emoji:"🪵" },
+      sand:     { id:"sand",     name:"Sand",        emoji:"🟡" },
+      iron:     { id:"iron",     name:"Iron/Rebar",  emoji:"🩶" },
     };
 
-    // Phase 1 hotbar: dirt + stone. More unlock in Phase 2.
     const PHASE_1_HOTBAR = ["dirt", "stone"];
-
-    // Cache: blockId → material (or MultiMaterial for grass)
     const blockMaterials = {};
 
-    // ─── Texture helper ──────────────────────────────────────────
-    /**
-     * Creates a StandardMaterial with a texture URL.
-     * While the texture downloads, the fallback color shows immediately
-     * so the world never looks completely broken.
-     *
-     * uScale / vScale = 1 means the texture tiles exactly once per face.
-     * Minecraft textures are pixel-art (16x16) so we keep filtering
-     * NEAREST to get crisp pixels instead of blurry interpolation.
-     */
-    function _makeMat(name, url, scene, fallbackHex) {
-      const mat = new BABYLON.StandardMaterial(name, scene);
+    const TEX = 16;
 
-      // Show the fallback color right away
-      mat.diffuseColor = BABYLON.Color3.FromHexString(fallbackHex);
-      mat.ambientColor = new BABYLON.Color3(0.25, 0.25, 0.25);
-
-      // Load texture asynchronously
-      const tex = new BABYLON.Texture(url, scene,
-        /* noMipmap  */ false,
-        /* invertY   */ false,
-        /* samplingMode */ BABYLON.Texture.NEAREST_SAMPLINGMODE
+    function _makeTex(name, drawFn, scene) {
+      const dt = new BABYLON.DynamicTexture(name, { width: TEX, height: TEX }, scene, false,
+        BABYLON.Texture.NEAREST_SAMPLINGMODE
       );
+      drawFn(dt.getContext(), TEX);
+      dt.update();
+      return dt;
+    }
 
-      tex.onLoadObservable.addOnce(() => {
-        mat.diffuseTexture = tex;
-        mat.diffuseColor   = new BABYLON.Color3(1, 1, 1); // remove tint once texture loads
-      });
-
+    function _makeMat(name, drawFn, scene) {
+      const mat = new BABYLON.StandardMaterial(name, scene);
+      mat.diffuseTexture = _makeTex(name + "_tex", drawFn, scene);
+      mat.ambientColor   = new BABYLON.Color3(0.3, 0.3, 0.3);
+      mat.specularColor  = new BABYLON.Color3(0, 0, 0);
       return mat;
     }
 
-    /**
-     * Builds the material(s) for every block type and caches them.
-     *
-     * For grass we create a MultiMaterial with 3 sub-materials:
-     *   subMaterial index 0 → sides  (Babylon face order: right, left, top, bottom, front, back)
-     *   subMaterial index 1 → top
-     *   subMaterial index 2 → bottom
-     *
-     * Babylon.js CreateBox face indices:
-     *   0 = +X (right),  1 = -X (left)
-     *   2 = +Y (top),    3 = -Y (bottom)
-     *   4 = +Z (front),  5 = -Z (back)
-     */
-    function initBlockMaterials(scene) {
-      Object.values(BLOCK_TYPES).forEach((b) => {
-        if (typeof b.texture === "string") {
-          // ── Simple block: same texture on all faces ──
-          blockMaterials[b.id] = _makeMat("mat_" + b.id, b.texture, scene, b.fallbackColor);
+    function _rnd(base, range) {
+      const v = Math.floor(base + (Math.random() - 0.5) * range);
+      return Math.max(0, Math.min(255, v));
+    }
 
-        } else {
-          // ── Multi-face block (grass): different top / side / bottom ──
-          const matSide   = _makeMat("mat_" + b.id + "_side",   b.texture.side,   scene, b.fallbackColor);
-          const matTop    = _makeMat("mat_" + b.id + "_top",    b.texture.top,    scene, "#5aac44");
-          const matBottom = _makeMat("mat_" + b.id + "_bottom", b.texture.bottom, scene, b.fallbackColor);
-
-          const multi = new BABYLON.MultiMaterial("multi_" + b.id, scene);
-          // Order matches Babylon face indices 0-5
-          // Faces: +X, -X, +Y, -Y, +Z, -Z
-          multi.subMaterials = [
-            matSide,    // 0: right
-            matSide,    // 1: left
-            matTop,     // 2: top  ← green grass
-            matBottom,  // 3: bottom ← dirt
-            matSide,    // 4: front
-            matSide,    // 5: back
-          ];
-
-          blockMaterials[b.id] = multi;
+    function _drawDirt(ctx, s) {
+      for (let y = 0; y < s; y++) {
+        for (let x = 0; x < s; x++) {
+          const r = _rnd(110,30), g = _rnd(72,20), b = _rnd(38,15);
+          ctx.fillStyle = "rgb("+r+","+g+","+b+")";
+          ctx.fillRect(x, y, 1, 1);
         }
+      }
+      for (let i = 0; i < 8; i++) {
+        ctx.fillStyle = "rgba(40,20,5,0.35)";
+        ctx.fillRect(Math.floor(Math.random()*s), Math.floor(Math.random()*s), 2, 2);
+      }
+    }
+
+    function _drawGrassTop(ctx, s) {
+      for (let y = 0; y < s; y++) {
+        for (let x = 0; x < s; x++) {
+          const r = _rnd(3,10), g = _rnd(87,25), b = _rnd(8,10);
+          ctx.fillStyle = "rgb("+r+","+g+","+b+")";
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+      for (let i = 0; i < 6; i++) {
+        ctx.fillStyle = "rgba(80,180,30,0.5)";
+        ctx.fillRect(Math.floor(Math.random()*s), Math.floor(Math.random()*s), 1, 2);
+      }
+    }
+
+    function _drawGrassSide(ctx, s) {
+      const grassBand = Math.floor(s * 0.35);
+      for (let y = grassBand; y < s; y++) {
+        for (let x = 0; x < s; x++) {
+          const r = _rnd(110,25), g = _rnd(72,15), b = _rnd(38,12);
+          ctx.fillStyle = "rgb("+r+","+g+","+b+")";
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+      for (let y = 0; y < grassBand; y++) {
+        for (let x = 0; x < s; x++) {
+          const r = _rnd(3,8), g = _rnd(87,20), b = _rnd(8,8);
+          ctx.fillStyle = "rgb("+r+","+g+","+b+")";
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    }
+
+    function _drawStone(ctx, s) {
+      for (let y = 0; y < s; y++) {
+        for (let x = 0; x < s; x++) {
+          const base = _rnd(108,22);
+          ctx.fillStyle = "rgb("+base+","+base+","+(Math.min(255,base+4))+")";
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+      ctx.fillStyle = "rgba(50,50,55,0.4)";
+      ctx.fillRect(4,0,1,8); ctx.fillRect(12,8,1,8); ctx.fillRect(0,8,16,1);
+    }
+
+    function _drawConcrete(ctx, s) {
+      for (let y = 0; y < s; y++) {
+        for (let x = 0; x < s; x++) {
+          const base = _rnd(175,15);
+          ctx.fillStyle = "rgb("+base+","+Math.floor(base*0.97)+","+Math.floor(base*0.94)+")";
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+      ctx.fillStyle = "rgba(120,115,110,0.5)";
+      ctx.fillRect(0,7,16,1); ctx.fillRect(0,14,16,1);
+      ctx.fillRect(7,0,1,7);  ctx.fillRect(3,7,1,7); ctx.fillRect(11,7,1,7);
+    }
+
+    function _drawWood(ctx, s) {
+      for (let y = 0; y < s; y++) {
+        for (let x = 0; x < s; x++) {
+          const r = _rnd(180,20), g = _rnd(120,18), b = _rnd(50,12);
+          ctx.fillStyle = "rgb("+r+","+g+","+b+")";
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+      for (let i = 0; i < 4; i++) {
+        ctx.fillStyle = "rgba(90,55,15,0.3)";
+        ctx.fillRect(0, i*4, s, 1);
+      }
+    }
+
+    function _drawSand(ctx, s) {
+      for (let y = 0; y < s; y++) {
+        for (let x = 0; x < s; x++) {
+          const r = _rnd(225,18), g = _rnd(205,15), b = _rnd(140,20);
+          ctx.fillStyle = "rgb("+r+","+g+","+b+")";
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    }
+
+    function _drawIron(ctx, s) {
+      for (let y = 0; y < s; y++) {
+        for (let x = 0; x < s; x++) {
+          const base = _rnd(165,18);
+          ctx.fillStyle = "rgb("+base+","+base+","+(Math.min(255,base+10))+")";
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+      ctx.fillStyle = "rgba(100,100,120,0.45)";
+      [3,7,11].forEach(function(i){
+        ctx.fillRect(i,0,1,s); ctx.fillRect(0,i,s,1);
+      });
+      ctx.fillStyle = "rgba(80,80,100,0.7)";
+      [[2,2],[6,6],[10,2],[2,10],[10,10],[6,13]].forEach(function(p){
+        ctx.fillRect(p[0],p[1],2,2);
       });
     }
 
-    /**
-     * Returns the cached material for a block id.
-     * Works for both StandardMaterial and MultiMaterial.
-     */
+    function initBlockMaterials(scene) {
+      blockMaterials["dirt"]     = _makeMat("mat_dirt",     _drawDirt,     scene);
+      blockMaterials["stone"]    = _makeMat("mat_stone",    _drawStone,    scene);
+      blockMaterials["concrete"] = _makeMat("mat_concrete", _drawConcrete, scene);
+      blockMaterials["wood"]     = _makeMat("mat_wood",     _drawWood,     scene);
+      blockMaterials["sand"]     = _makeMat("mat_sand",     _drawSand,     scene);
+      blockMaterials["iron"]     = _makeMat("mat_iron",     _drawIron,     scene);
+
+      var matGrassTop    = _makeMat("mat_grass_top",    _drawGrassTop,  scene);
+      var matGrassSide   = _makeMat("mat_grass_side",   _drawGrassSide, scene);
+      var matGrassBottom = _makeMat("mat_grass_bottom", _drawDirt,      scene);
+
+      var grassMulti = new BABYLON.MultiMaterial("multi_grass", scene);
+      grassMulti.subMaterials = [
+        matGrassSide, matGrassSide, matGrassTop,
+        matGrassBottom, matGrassSide, matGrassSide
+      ];
+      blockMaterials["grass"] = grassMulti;
+    }
+
     function getBlockMaterial(blockId) {
-      const mat = blockMaterials[blockId];
+      var mat = blockMaterials[blockId];
       if (!mat) throw new Error("[blocks] No material for: " + blockId);
       return mat;
     }
-
-    /**
-     * Returns true if a block type uses MultiMaterial (per-face textures).
-     * world.js uses this to know whether to set subMeshes on the box mesh.
-     */
-    function isMultiFace(blockId) {
-      return blockMaterials[blockId] instanceof BABYLON.MultiMaterial;
-    }
   </script>
-
   <!-- world.js -->
   <script>
     const WORLD_CONFIG = {
@@ -345,44 +375,40 @@
     }
 
     function spawnBlock(x, y, z, blockId) {
-      const key = toKey(x, y, z);
+      var key = toKey(x, y, z);
       if (blockMap.has(key)) return null;
 
-      const mat = getBlockMaterial(blockId);
+      var mat    = getBlockMaterial(blockId);
+      var isMulti = mat instanceof BABYLON.MultiMaterial;
 
-      // For MultiMaterial blocks (grass), Babylon needs explicit subMeshes
-      // so it knows which sub-material maps to which face of the box.
-      // A box has 6 faces = 6 subMeshes, each covering 2 triangles (6 indices).
-      //
-      // CreateBox with faceUV/faceColors approach works too, but subMeshes
-      // is cleaner when combining with a MultiMaterial.
-      const isMulti = mat instanceof BABYLON.MultiMaterial;
+      // FIX #2: Do NOT use wrap:true — it changes vertex layout and
+      // breaks hit.getNormal() making block placement fail.
+      // For MultiMaterial grass we use faceUV to split UV per face
+      // while keeping the standard box vertex layout intact.
+      var options = { size: 0.99 };
 
-      const mesh = BABYLON.MeshBuilder.CreateBox(
-        "block_" + key,
-        {
-          size: 0.99,
-          // When using MultiMaterial we need the box to have separate
-          // index groups per face — wrap:false keeps UVs clean per face
-          wrap: isMulti,
-        },
-        _worldScene
-      );
+      if (isMulti) {
+        // faceUV maps each of the 6 box faces to a UV region.
+        // Since each sub-material has its own full texture we just
+        // give every face the full UV (0,0)→(1,1).
+        var uv = new BABYLON.Vector4(0, 0, 1, 1);
+        options.faceUV = [uv, uv, uv, uv, uv, uv];
+      }
 
+      var mesh = BABYLON.MeshBuilder.CreateBox("block_" + key, options, _worldScene);
       mesh.position.set(x, y, z);
       mesh.material   = mat;
       mesh.isPickable = true;
-      mesh.metadata   = { blockId, gridX: x, gridY: y, gridZ: z };
+      mesh.metadata   = { blockId: blockId, gridX: x, gridY: y, gridZ: z };
 
-      // For MultiMaterial: assign each of the 6 box faces to its sub-material index.
-      // Babylon's box face order: 0=right(+X), 1=left(-X), 2=top(+Y),
-      //                           3=bottom(-Y), 4=front(+Z), 5=back(-Z)
+      // For MultiMaterial: create one SubMesh per face so Babylon knows
+      // which subMaterial index to apply to each face.
+      // Box has 36 indices total = 6 faces × 6 indices each.
       if (isMulti) {
         mesh.subMeshes = [];
-        const verticesCount = mesh.getTotalVertices();
-        // Each face = 2 triangles = 6 indices; box total = 36 indices
-        for (let i = 0; i < 6; i++) {
-          new BABYLON.SubMesh(i, 0, verticesCount, i * 6, 6, mesh);
+        var vc = mesh.getTotalVertices();
+        for (var i = 0; i < 6; i++) {
+          new BABYLON.SubMesh(i, 0, vc, i * 6, 6, mesh);
         }
       }
 
@@ -412,13 +438,30 @@
     function initWorld(scene) {
       _worldScene = scene;
       _noise      = new SimplexNoise();
-      const half  = Math.floor(WORLD_CONFIG.SIZE / 2);
+      var half    = Math.floor(WORLD_CONFIG.SIZE / 2);
 
-      for (let x = -half; x < half; x++) {
-        for (let z = -half; z < half; z++) {
-          const h = getTerrainHeight(x, z);
+      // FIX #1: Surface-only terrain — only spawn the TOP block per column.
+      // Previously we filled every column with dirt layers below the surface.
+      // Those hidden blocks (a) waste performance and (b) show through gaps
+      // in the 0.99-size blocks when viewed at an angle.
+      //
+      // We still keep ONE layer of stone at y=0 as a visible floor the player
+      // can stand on if they dig all the way down.
+      for (var x = -half; x < half; x++) {
+        for (var z = -half; z < half; z++) {
+          var h = getTerrainHeight(x, z);
+
+          // Top surface block — grass on raised land, dirt on flat areas
           spawnBlock(x, h, z, h > WORLD_CONFIG.BASE_HEIGHT ? "grass" : "dirt");
-          for (let y = h - 1; y > 0; y--) spawnBlock(x, y, z, "dirt");
+
+          // One dirt layer directly below each surface block.
+          // This means when the player REMOVES a grass block they see dirt
+          // underneath — realistic, and no performance cost of deep fills.
+          if (h > 0) {
+            spawnBlock(x, h - 1, z, "dirt");
+          }
+
+          // Bedrock stone floor — always at y=0
           spawnBlock(x, 0, z, "stone");
         }
       }
