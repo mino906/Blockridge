@@ -4,10 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BuildRight — Construction Learning Game</title>
+  <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BuildRight — Construction Learning Game</title>
 
-  <!-- CDN libraries load first, synchronously, before any game code -->
+  <!-- Babylon.js only — SimplexNoise removed, no longer needed -->
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -47,23 +52,44 @@
       user-select: none;
     }
 
-    #block-indicator {
+    /* ── Hotbar ── */
+    #hotbar {
       position: absolute;
-      bottom: 24px; left: 50%;
+      bottom: 20px;
+      left: 50%;
       transform: translateX(-50%);
       display: flex;
-      align-items: center;
-      gap: 10px;
-      background: rgba(0,0,0,0.55);
-      border: 2px solid rgba(255,255,255,0.2);
-      border-radius: 10px;
-      padding: 8px 20px;
-      font-size: 15px;
-      font-weight: 600;
-      backdrop-filter: blur(6px);
+      gap: 6px;
     }
 
-    #block-icon { font-size: 20px; }
+    .hotbar-slot {
+      width: 54px;
+      height: 54px;
+      background: rgba(0,0,0,0.55);
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      gap: 2px;
+      backdrop-filter: blur(6px);
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .hotbar-slot .slot-label {
+      font-size: 9px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .hotbar-slot.active {
+      border-color: #e8a020;
+      background: rgba(232,160,32,0.18);
+    }
 
     #controls-hint {
       position: absolute;
@@ -77,7 +103,6 @@
       backdrop-filter: blur(6px);
       transition: opacity 0.6s ease;
     }
-
     #controls-hint.hidden { opacity: 0; }
 
     #paused-overlay {
@@ -145,16 +170,23 @@
 
   <div id="hud">
     <div id="crosshair">+</div>
-    <div id="block-indicator">
-      <span id="block-icon">🟫</span>
-      <span id="block-name">Dirt</span>
+
+    <!-- Hotbar: 6 slots, one per block type -->
+    <div id="hotbar">
+      <div class="hotbar-slot active" id="slot-0"><span id="slot-icon-0">🟫</span><span class="slot-label">1 Dirt</span></div>
+      <div class="hotbar-slot"        id="slot-1"><span id="slot-icon-1">⬜</span><span class="slot-label">2 Stone</span></div>
+      <div class="hotbar-slot"        id="slot-2"><span id="slot-icon-2">🔲</span><span class="slot-label">3 Concrete</span></div>
+      <div class="hotbar-slot"        id="slot-3"><span id="slot-icon-3">🪵</span><span class="slot-label">4 Wood</span></div>
+      <div class="hotbar-slot"        id="slot-4"><span id="slot-icon-4">🟡</span><span class="slot-label">5 Sand</span></div>
+      <div class="hotbar-slot"        id="slot-5"><span id="slot-icon-5">🩶</span><span class="slot-label">6 Iron</span></div>
     </div>
+
     <div id="controls-hint">
       <strong>Controls</strong><br/>
       WASD — Move &nbsp;|&nbsp; Mouse — Look<br/>
       Space — Jump &nbsp;|&nbsp; Shift — Sprint<br/>
       Left Click — Remove &nbsp;|&nbsp; Right Click — Place<br/>
-      1-6 — Switch Block &nbsp;|&nbsp; ESC — Pause
+      1–6 — Switch Block &nbsp;|&nbsp; ESC — Pause
     </div>
   </div>
 
@@ -168,14 +200,8 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════
-       ALL GAME SCRIPTS INLINE — zero load-order issues
-       Scripts run top-to-bottom synchronously after CDNs load
-       ═══════════════════════════════════════════════════════ -->
-
   <!-- blocks.js -->
   <script>
-    // ─── Block Definitions ───────────────────────────────────────
     const BLOCK_TYPES = {
       dirt:     { id:"dirt",     name:"Dirt",       emoji:"🟫" },
       grass:    { id:"grass",    name:"Grass",       emoji:"🟩" },
@@ -186,9 +212,10 @@
       iron:     { id:"iron",     name:"Iron/Rebar",  emoji:"🩶" },
     };
 
+    // 6-slot hotbar — all block types available from the start
     const PHASE_1_HOTBAR = ["dirt", "stone", "concrete", "wood", "sand", "iron"];
-    const blockMaterials = {};
 
+    const blockMaterials = {};
     const TEX = 16;
 
     function _makeTex(name, drawFn, scene) {
@@ -214,13 +241,11 @@
     }
 
     function _drawDirt(ctx, s) {
-      for (let y = 0; y < s; y++) {
+      for (let y = 0; y < s; y++)
         for (let x = 0; x < s; x++) {
-          const r = _rnd(110,30), g = _rnd(72,20), b = _rnd(38,15);
-          ctx.fillStyle = "rgb("+r+","+g+","+b+")";
+          ctx.fillStyle = "rgb("+_rnd(110,30)+","+_rnd(72,20)+","+_rnd(38,15)+")";
           ctx.fillRect(x, y, 1, 1);
         }
-      }
       for (let i = 0; i < 8; i++) {
         ctx.fillStyle = "rgba(40,20,5,0.35)";
         ctx.fillRect(Math.floor(Math.random()*s), Math.floor(Math.random()*s), 2, 2);
@@ -228,13 +253,11 @@
     }
 
     function _drawGrassTop(ctx, s) {
-      for (let y = 0; y < s; y++) {
+      for (let y = 0; y < s; y++)
         for (let x = 0; x < s; x++) {
-          const r = _rnd(3,10), g = _rnd(87,25), b = _rnd(8,10);
-          ctx.fillStyle = "rgb("+r+","+g+","+b+")";
+          ctx.fillStyle = "rgb("+_rnd(3,10)+","+_rnd(87,25)+","+_rnd(8,10)+")";
           ctx.fillRect(x, y, 1, 1);
         }
-      }
       for (let i = 0; i < 6; i++) {
         ctx.fillStyle = "rgba(80,180,30,0.5)";
         ctx.fillRect(Math.floor(Math.random()*s), Math.floor(Math.random()*s), 1, 2);
@@ -242,56 +265,48 @@
     }
 
     function _drawGrassSide(ctx, s) {
-      const grassBand = Math.floor(s * 0.35);
-      for (let y = grassBand; y < s; y++) {
+      const gb = Math.floor(s * 0.35);
+      for (let y = gb; y < s; y++)
         for (let x = 0; x < s; x++) {
-          const r = _rnd(110,25), g = _rnd(72,15), b = _rnd(38,12);
-          ctx.fillStyle = "rgb("+r+","+g+","+b+")";
+          ctx.fillStyle = "rgb("+_rnd(110,25)+","+_rnd(72,15)+","+_rnd(38,12)+")";
           ctx.fillRect(x, y, 1, 1);
         }
-      }
-      for (let y = 0; y < grassBand; y++) {
+      for (let y = 0; y < gb; y++)
         for (let x = 0; x < s; x++) {
-          const r = _rnd(3,8), g = _rnd(87,20), b = _rnd(8,8);
-          ctx.fillStyle = "rgb("+r+","+g+","+b+")";
+          ctx.fillStyle = "rgb("+_rnd(3,8)+","+_rnd(87,20)+","+_rnd(8,8)+")";
           ctx.fillRect(x, y, 1, 1);
         }
-      }
     }
 
     function _drawStone(ctx, s) {
-      for (let y = 0; y < s; y++) {
+      for (let y = 0; y < s; y++)
         for (let x = 0; x < s; x++) {
-          const base = _rnd(108,22);
-          ctx.fillStyle = "rgb("+base+","+base+","+(Math.min(255,base+4))+")";
+          const b = _rnd(108,22);
+          ctx.fillStyle = "rgb("+b+","+b+","+(Math.min(255,b+4))+")";
           ctx.fillRect(x, y, 1, 1);
         }
-      }
       ctx.fillStyle = "rgba(50,50,55,0.4)";
       ctx.fillRect(4,0,1,8); ctx.fillRect(12,8,1,8); ctx.fillRect(0,8,16,1);
     }
 
     function _drawConcrete(ctx, s) {
-      for (let y = 0; y < s; y++) {
+      for (let y = 0; y < s; y++)
         for (let x = 0; x < s; x++) {
-          const base = _rnd(175,15);
-          ctx.fillStyle = "rgb("+base+","+Math.floor(base*0.97)+","+Math.floor(base*0.94)+")";
+          const b = _rnd(175,15);
+          ctx.fillStyle = "rgb("+b+","+Math.floor(b*0.97)+","+Math.floor(b*0.94)+")";
           ctx.fillRect(x, y, 1, 1);
         }
-      }
       ctx.fillStyle = "rgba(120,115,110,0.5)";
       ctx.fillRect(0,7,16,1); ctx.fillRect(0,14,16,1);
       ctx.fillRect(7,0,1,7);  ctx.fillRect(3,7,1,7); ctx.fillRect(11,7,1,7);
     }
 
     function _drawWood(ctx, s) {
-      for (let y = 0; y < s; y++) {
+      for (let y = 0; y < s; y++)
         for (let x = 0; x < s; x++) {
-          const r = _rnd(180,20), g = _rnd(120,18), b = _rnd(50,12);
-          ctx.fillStyle = "rgb("+r+","+g+","+b+")";
+          ctx.fillStyle = "rgb("+_rnd(180,20)+","+_rnd(120,18)+","+_rnd(50,12)+")";
           ctx.fillRect(x, y, 1, 1);
         }
-      }
       for (let i = 0; i < 4; i++) {
         ctx.fillStyle = "rgba(90,55,15,0.3)";
         ctx.fillRect(0, i*4, s, 1);
@@ -299,31 +314,24 @@
     }
 
     function _drawSand(ctx, s) {
-      for (let y = 0; y < s; y++) {
+      for (let y = 0; y < s; y++)
         for (let x = 0; x < s; x++) {
-          const r = _rnd(225,18), g = _rnd(205,15), b = _rnd(140,20);
-          ctx.fillStyle = "rgb("+r+","+g+","+b+")";
+          ctx.fillStyle = "rgb("+_rnd(225,18)+","+_rnd(205,15)+","+_rnd(140,20)+")";
           ctx.fillRect(x, y, 1, 1);
         }
-      }
     }
 
     function _drawIron(ctx, s) {
-      for (let y = 0; y < s; y++) {
+      for (let y = 0; y < s; y++)
         for (let x = 0; x < s; x++) {
-          const base = _rnd(165,18);
-          ctx.fillStyle = "rgb("+base+","+base+","+(Math.min(255,base+10))+")";
+          const b = _rnd(165,18);
+          ctx.fillStyle = "rgb("+b+","+b+","+(Math.min(255,b+10))+")";
           ctx.fillRect(x, y, 1, 1);
         }
-      }
       ctx.fillStyle = "rgba(100,100,120,0.45)";
-      [3,7,11].forEach(function(i){
-        ctx.fillRect(i,0,1,s); ctx.fillRect(0,i,s,1);
-      });
+      [3,7,11].forEach(i => { ctx.fillRect(i,0,1,s); ctx.fillRect(0,i,s,1); });
       ctx.fillStyle = "rgba(80,80,100,0.7)";
-      [[2,2],[6,6],[10,2],[2,10],[10,10],[6,13]].forEach(function(p){
-        ctx.fillRect(p[0],p[1],2,2);
-      });
+      [[2,2],[6,6],[10,2],[2,10],[10,10],[6,13]].forEach(p => ctx.fillRect(p[0],p[1],2,2));
     }
 
     function initBlockMaterials(scene) {
@@ -334,72 +342,57 @@
       blockMaterials["sand"]     = _makeMat("mat_sand",     _drawSand,     scene);
       blockMaterials["iron"]     = _makeMat("mat_iron",     _drawIron,     scene);
 
-      var matGrassTop    = _makeMat("mat_grass_top",    _drawGrassTop,  scene);
-      var matGrassSide   = _makeMat("mat_grass_side",   _drawGrassSide, scene);
-      var matGrassBottom = _makeMat("mat_grass_bottom", _drawDirt,      scene);
-
-      var grassMulti = new BABYLON.MultiMaterial("multi_grass", scene);
-      grassMulti.subMaterials = [
-        matGrassSide, matGrassSide, matGrassTop,
-        matGrassBottom, matGrassSide, matGrassSide
-      ];
-      blockMaterials["grass"] = grassMulti;
+      const matTop    = _makeMat("mat_grass_top",    _drawGrassTop,  scene);
+      const matSide   = _makeMat("mat_grass_side",   _drawGrassSide, scene);
+      const matBottom = _makeMat("mat_grass_bottom", _drawDirt,      scene);
+      const multi     = new BABYLON.MultiMaterial("multi_grass", scene);
+      multi.subMaterials = [matSide, matSide, matTop, matBottom, matSide, matSide];
+      blockMaterials["grass"] = multi;
     }
 
     function getBlockMaterial(blockId) {
-      var mat = blockMaterials[blockId];
+      const mat = blockMaterials[blockId];
       if (!mat) throw new Error("[blocks] No material for: " + blockId);
       return mat;
     }
   </script>
+
   <!-- world.js -->
   <script>
     const WORLD_CONFIG = {
-      SIZE:        40,
-      MAX_HEIGHT:  6,
-      BASE_HEIGHT: 1,
-      NOISE_SCALE: 0.15,
+      SIZE: 60,   // Larger flat world — more room to build
     };
 
     const blockMap = new Map();
     let _worldScene = null;
-    let _noise      = null;
 
     function toKey(x, y, z) {
       return Math.round(x) + "," + Math.round(y) + "," + Math.round(z);
     }
 
-    function getTerrainHeight(x, z) {
-      const v = _noise.noise2D(x * WORLD_CONFIG.NOISE_SCALE, z * WORLD_CONFIG.NOISE_SCALE);
-      return Math.floor(((v + 1) / 3) * WORLD_CONFIG.MAX_HEIGHT) + WORLD_CONFIG.BASE_HEIGHT;
-    }
-
     function spawnBlock(x, y, z, blockId) {
-      var key = toKey(x, y, z);
+      const key = toKey(x, y, z);
       if (blockMap.has(key)) return null;
 
-      var mat    = getBlockMaterial(blockId);
-      var isMulti = mat instanceof BABYLON.MultiMaterial;
-
-      var options = { size: 0.99 };
+      const mat     = getBlockMaterial(blockId);
+      const isMulti = mat instanceof BABYLON.MultiMaterial;
+      const options = { size: 0.99 };
 
       if (isMulti) {
-        var uv = new BABYLON.Vector4(0, 0, 1, 1);
+        const uv = new BABYLON.Vector4(0, 0, 1, 1);
         options.faceUV = [uv, uv, uv, uv, uv, uv];
       }
 
-      var mesh = BABYLON.MeshBuilder.CreateBox("block_" + key, options, _worldScene);
+      const mesh = BABYLON.MeshBuilder.CreateBox("block_" + key, options, _worldScene);
       mesh.position.set(x, y, z);
-      mesh.material   = mat;
-      mesh.isPickable = true;
-      mesh.metadata   = { blockId: blockId, gridX: x, gridY: y, gridZ: z };
+      mesh.material    = mat;
+      mesh.isPickable  = true;
+      mesh.metadata    = { blockId, gridX: x, gridY: y, gridZ: z };
 
       if (isMulti) {
         mesh.subMeshes = [];
-        var vc = mesh.getTotalVertices();
-        for (var i = 0; i < 6; i++) {
-          new BABYLON.SubMesh(i, 0, vc, i * 6, 6, mesh);
-        }
+        const vc = mesh.getTotalVertices();
+        for (let i = 0; i < 6; i++) new BABYLON.SubMesh(i, 0, vc, i * 6, 6, mesh);
       }
 
       blockMap.set(key, mesh);
@@ -427,23 +420,20 @@
 
     function initWorld(scene) {
       _worldScene = scene;
-      _noise      = new SimplexNoise();
-      var half    = Math.floor(WORLD_CONFIG.SIZE / 2);
+      const half  = Math.floor(WORLD_CONFIG.SIZE / 2);
 
-      for (var x = -half; x < half; x++) {
-        for (var z = -half; z < half; z++) {
-          var h = getTerrainHeight(x, z);
-
-          spawnBlock(x, h, z, h > WORLD_CONFIG.BASE_HEIGHT ? "grass" : "dirt" );
-
-          if (h > 0) {
-            spawnBlock(x, h - 1, z, "dirt");
-          }
-
-          spawnBlock(x, 0, z, "stone");
+      // ── FLAT TERRAIN ──────────────────────────────────────────
+      // No Perlin noise. Every column is exactly the same height.
+      // Surface = y:1 (grass), subsurface = y:0 (stone bedrock).
+      // Simple, clean, and perfect for construction lessons.
+      for (let x = -half; x < half; x++) {
+        for (let z = -half; z < half; z++) {
+          spawnBlock(x, 1, z, "grass");   // Surface layer — grass
+          spawnBlock(x, 0, z, "stone");   // Bedrock floor — stone
         }
       }
-      console.log("[world] Generated " + blockMap.size + " blocks");
+
+      console.log("[world] Flat world generated: " + blockMap.size + " blocks");
     }
   </script>
 
@@ -466,6 +456,7 @@
     let _verticalVelocity = 0;
     let _isOnGround       = false;
     let _selectedBlockId  = "dirt";
+    let _selectedSlot     = 0;
     let _lastActionTime   = 0;
     const ACTION_COOLDOWN = 220;
     let _yaw   = 0;
@@ -479,22 +470,19 @@
 
       _camera = new BABYLON.UniversalCamera(
         "playerCamera",
-        new BABYLON.Vector3(0, PLAYER_CONFIG.EYE_HEIGHT + 5, -5),
+        new BABYLON.Vector3(0, PLAYER_CONFIG.EYE_HEIGHT + 2, -5),
         scene
       );
       _camera.minZ = 0.1;
       _camera.inputs.clear();
-      _camera.setTarget(new BABYLON.Vector3(0, PLAYER_CONFIG.EYE_HEIGHT + 4, 0));
+      _camera.setTarget(new BABYLON.Vector3(0, PLAYER_CONFIG.EYE_HEIGHT + 1, 0));
 
       window.addEventListener("keydown", (e) => {
         _keys.add(e.code);
-        // Map number keys 1-6 to hotbar slots
-        if (e.code === "Digit1") _selectBlock(PHASE_1_HOTBAR[0]);
-        if (e.code === "Digit2") _selectBlock(PHASE_1_HOTBAR[1]);
-        if (e.code === "Digit3") _selectBlock(PHASE_1_HOTBAR[2]);
-        if (e.code === "Digit4") _selectBlock(PHASE_1_HOTBAR[3]);
-        if (e.code === "Digit5") _selectBlock(PHASE_1_HOTBAR[4]);
-        if (e.code === "Digit6") _selectBlock(PHASE_1_HOTBAR[5]);
+        const digitMap = {
+          Digit1:0, Digit2:1, Digit3:2, Digit4:3, Digit5:4, Digit6:5
+        };
+        if (e.code in digitMap) _selectSlot(digitMap[e.code]);
       });
       window.addEventListener("keyup", (e) => _keys.delete(e.code));
 
@@ -544,29 +532,32 @@
       } else if (e.button === 2) {
         const n = hit.getNormal(true);
         if (!n) return;
-        const px = Math.round(_camera.position.x);
-        const pz = Math.round(_camera.position.z);
-        const py = Math.round(_camera.position.y - PLAYER_CONFIG.EYE_HEIGHT);
         const bx = gridX + Math.round(n.x);
         const by = gridY + Math.round(n.y);
         const bz = gridZ + Math.round(n.z);
+        // Don't place inside the player's body
+        const px = Math.round(_camera.position.x);
+        const pz = Math.round(_camera.position.z);
+        const py = Math.round(_camera.position.y - PLAYER_CONFIG.EYE_HEIGHT);
         if (bx === px && bz === pz && (by === py || by === py + 1)) return;
         placeBlock(bx, by, bz, _selectedBlockId);
       }
     }
 
-    function _selectBlock(blockId) {
+    // Select a hotbar slot by index (0–5)
+    function _selectSlot(index) {
+      const blockId = PHASE_1_HOTBAR[index];
       if (!blockId) return;
+      _selectedSlot    = index;
       _selectedBlockId = blockId;
-      updateBlockIndicator(blockId);
+      updateHotbar(index);   // defined in ui.js
     }
 
     function _playerUpdate() {
       if (!_camera) return;
-      const pos      = _camera.position;
-      const speed    = (_keys.has("ShiftLeft") || _keys.has("ShiftRight"))
-                         ? PLAYER_CONFIG.SPRINT_SPEED
-                         : PLAYER_CONFIG.MOVE_SPEED;
+      const pos   = _camera.position;
+      const speed = (_keys.has("ShiftLeft") || _keys.has("ShiftRight"))
+                      ? PLAYER_CONFIG.SPRINT_SPEED : PLAYER_CONFIG.MOVE_SPEED;
 
       const fwd   = new BABYLON.Vector3(Math.sin(_yaw), 0, Math.cos(_yaw));
       const right = new BABYLON.Vector3(Math.cos(_yaw), 0, -Math.sin(_yaw));
@@ -577,15 +568,17 @@
       if (_keys.has("KeyA")) move.subtractInPlace(right);
       if (_keys.has("KeyD")) move.addInPlace(right);
 
-
       if (move.length() > 0) {
         move.normalize().scaleInPlace(speed);
         pos.addInPlace(move);
       }
 
+      // Gravity
       _verticalVelocity -= PLAYER_CONFIG.GRAVITY;
       pos.y += _verticalVelocity;
 
+      // FIX: ground scan goes to y >= -2 (not y >= 2)
+      // so the player never falls through the floor
       const groundY   = _findGround(Math.round(pos.x), pos.y, Math.round(pos.z));
       const standingY = groundY + 1 + PLAYER_CONFIG.EYE_HEIGHT + PLAYER_CONFIG.FLOOR_OFFSET;
 
@@ -602,16 +595,18 @@
         _isOnGround       = false;
       }
 
+      // World boundary clamp
       const half = Math.floor(WORLD_CONFIG.SIZE / 2) - 1;
       pos.x = Math.max(-half, Math.min(half, pos.x));
       pos.z = Math.max(-half, Math.min(half, pos.z));
     }
 
     function _findGround(x, fromY, z) {
-      for (let y = Math.floor(fromY); y >= 2; y--) {
+      // FIX: scan all the way to -2, not just to 2
+      for (let y = Math.floor(fromY); y >= -2; y--) {
         if (getBlock(x, y, z)) return y;
       }
-      return 2;
+      return -2;
     }
   </script>
 
@@ -628,9 +623,7 @@
       startBtn.addEventListener("click", () => {
         lockPrompt.classList.add("hidden");
         _gameStarted = true;
-        setTimeout(() => {
-          canvas.requestPointerLock();
-        }, 50);
+        setTimeout(() => canvas.requestPointerLock(), 50);
       });
 
       document.addEventListener("pointerlockchange", () => {
@@ -642,65 +635,71 @@
       });
 
       pausedOverlay.addEventListener("click", () => canvas.requestPointerLock());
-
       setTimeout(() => controlsHint.classList.add("hidden"), 8000);
     }
 
+    // Highlight the active hotbar slot and dim the rest
+    function updateHotbar(activeIndex) {
+      for (let i = 0; i < PHASE_1_HOTBAR.length; i++) {
+        const slot = document.getElementById("slot-" + i);
+        if (!slot) continue;
+        slot.classList.toggle("active", i === activeIndex);
+      }
+    }
+
+    // Keep old name for compatibility
     function updateBlockIndicator(blockId) {
-      const b = BLOCK_TYPES[blockId];
-      if (!b) return;
-      document.getElementById("block-icon").textContent = b.emoji;
-      document.getElementById("block-name").textContent = b.name;
+      const index = PHASE_1_HOTBAR.indexOf(blockId);
+      if (index !== -1) updateHotbar(index);
     }
   </script>
 
-  <!-- main.js — runs last, all functions above are already defined -->
+  <!-- main.js -->
   <script>
     (function () {
       try {
-        if (typeof BABYLON      === "undefined") throw new Error("Babylon.js CDN failed to load. Check your internet connection.");
-        if (typeof SimplexNoise === "undefined") throw new Error("SimplexNoise CDN failed to load. Check your internet connection.");
+        if (typeof BABYLON === "undefined")
+          throw new Error("Babylon.js CDN failed to load. Check your internet connection.");
 
         const canvas = document.getElementById("renderCanvas");
         const engine = new BABYLON.Engine(canvas, true);
         const scene  = new BABYLON.Scene(engine);
 
-        // Sky — warm afternoon blue
+        // Sky
         scene.clearColor = new BABYLON.Color4(0.47, 0.73, 0.95, 1.0);
 
-        // Fog — matches sky so world edge blends naturally
-        scene.fogMode    = BABYLON.Scene.FOGMODE_LINEAR;
-        scene.fogStart   = 22;
-        scene.fogEnd     = 42;
-        scene.fogColor   = new BABYLON.Color3(0.47, 0.73, 0.95);
+        // Fog — hides world edge cleanly
+        scene.fogMode  = BABYLON.Scene.FOGMODE_LINEAR;
+        scene.fogStart = 25;
+        scene.fogEnd   = 48;
+        scene.fogColor = new BABYLON.Color3(0.47, 0.73, 0.95);
 
-        // Hemispheric light = sky light (top) + ground bounce (bottom)
-        const amb = new BABYLON.HemisphericLight("amb", new BABYLON.Vector3(0, 1, 0), scene);
-        amb.diffuse      = new BABYLON.Color3(0.9, 0.95, 1.0);
-        amb.specular     = new BABYLON.Color3(0.1, 0.1, 0.1);
-        amb.groundColor  = new BABYLON.Color3(0.4, 0.3, 0.2);
-        amb.intensity    = 1.1;
+        // Sky light
+        const amb = new BABYLON.HemisphericLight("amb", new BABYLON.Vector3(0,1,0), scene);
+        amb.diffuse     = new BABYLON.Color3(0.9, 0.95, 1.0);
+        amb.specular    = new BABYLON.Color3(0.1, 0.1, 0.1);
+        amb.groundColor = new BABYLON.Color3(0.4, 0.3, 0.2);
+        amb.intensity   = 1.1;
 
-        // Directional light = sun casting side shadows on blocks
-        const sun = new BABYLON.DirectionalLight(
-          "sun",
-          new BABYLON.Vector3(-0.6, -1.2, -0.8).normalize(),
-          scene
-        );
-        sun.diffuse    = new BABYLON.Color3(1.0, 0.95, 0.85);
-        sun.specular   = new BABYLON.Color3(0.2, 0.2, 0.15);
-        sun.intensity  = 0.75;
+        // Sun
+        const sun = new BABYLON.DirectionalLight("sun",
+          new BABYLON.Vector3(-0.6,-1.2,-0.8).normalize(), scene);
+        sun.diffuse   = new BABYLON.Color3(1.0, 0.95, 0.85);
+        sun.specular  = new BABYLON.Color3(0.2, 0.2, 0.15);
+        sun.intensity = 0.75;
 
         initBlockMaterials(scene);
         initWorld(scene);
         initPlayer(scene, canvas);
         initUI(canvas);
-        updateBlockIndicator(PHASE_1_HOTBAR[0]);
+
+        // Activate slot 0 (dirt) on start
+        updateHotbar(0);
 
         engine.runRenderLoop(() => scene.render());
         window.addEventListener("resize", () => engine.resize());
 
-        console.log("[main] BuildRight Phase 1 running ✅");
+        console.log("[main] BuildRight Phase 1+2 running ✅");
 
       } catch (err) {
         document.body.innerHTML = `
