@@ -191,7 +191,155 @@
   </div>
 
   <div id="paused-overlay">⏸ PAUSED — Click to Resume</div>
+<!-- Task Checklist Panel — right side of screen -->
+<div id="task-panel">
 
+  <div style="font-size:11px; font-weight:700; letter-spacing:0.1em;
+    color:rgba(255,255,255,0.4); text-transform:uppercase; margin-bottom:2px;
+    padding-left:4px;">
+    📋 Foundation Lesson
+  </div>
+
+  <!-- Step 1 -->
+  <div class="task-card active" id="task-0" onclick="toggleCard(0)">
+    <div class="task-header">
+      <span class="task-icon">📖</span>
+      <span>Read the Foundation Guide</span>
+      <span class="task-status" id="task-status-0">○</span>
+    </div>
+    <div class="task-body">
+      Open your instruction book to learn what a foundation is
+      and why it matters before you start building.<br/><br/>
+      <strong>Press B</strong> to open the book.
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="task-card locked" id="task-1" onclick="toggleCard(1)">
+    <div class="task-header">
+      <span class="task-icon">📍</span>
+      <span>Find the Build Zone</span>
+      <span class="task-status" id="task-status-1">○</span>
+    </div>
+    <div class="task-body">
+      Walk to the <strong>orange marked area</strong> on the ground.
+      That is where your foundation will be built.<br/><br/>
+      It is marked 5 blocks north of your starting position.
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="task-card locked" id="task-2" onclick="toggleCard(2)">
+    <div class="task-header">
+      <span class="task-icon">⛏️</span>
+      <span>Dig the Foundation Trench</span>
+      <span class="task-status" id="task-status-2">○</span>
+    </div>
+    <div class="task-body">
+      Remove the <strong>3 grass blocks</strong> inside the build zone
+      to expose the ground below.<br/><br/>
+      <em>Real foundations are dug below the frost line
+      so the ground movement doesn't crack the structure.</em><br/><br/>
+      <strong>Left Click</strong> blocks to remove them.
+    </div>
+  </div>
+
+  <!-- Step 4 -->
+  <div class="task-card locked" id="task-3" onclick="toggleCard(3)">
+    <div class="task-header">
+      <span class="task-icon">🔲</span>
+      <span>Pour the Concrete</span>
+      <span class="task-status" id="task-status-3">○</span>
+    </div>
+    <div class="task-body">
+      Place <strong>3 concrete blocks</strong> to fill the trench
+      you just dug.<br/><br/>
+      <em>Concrete is used because it is strong under compression —
+      it can hold the weight of the entire house above it.</em><br/><br/>
+      Press <strong>3</strong> to select Concrete, then
+      <strong>Right Click</strong> to place.
+    </div>
+  </div>
+
+  <!-- Step 5 -->
+  <div class="task-card locked" id="task-4" onclick="toggleCard(4)">
+    <div class="task-header">
+      <span class="task-icon">🩶</span>
+      <span>Lay the Rebar</span>
+      <span class="task-status" id="task-status-4">○</span>
+    </div>
+    <div class="task-body">
+      Place <strong>3 iron/rebar blocks</strong> on top of the concrete.<br/><br/>
+      <em>Rebar (steel reinforcement bars) are embedded in concrete
+      to handle tension forces. Concrete alone cracks under tension —
+      rebar prevents this. Together they form reinforced concrete.</em><br/><br/>
+      Press <strong>6</strong> to select Iron/Rebar, then
+      <strong>Right Click</strong> to place.
+    </div>
+  </div>
+
+  <!-- Completion card — hidden until all steps done -->
+  <div id="task-complete" style="display:none; background:rgba(46,204,113,0.2);
+    border:1.5px solid #2ecc71; border-radius:10px; padding:12px 14px;
+    font-size:13px; font-weight:700; color:#2ecc71; text-align:center;
+    backdrop-filter:blur(8px);">
+    ✅ Foundation Complete!<br/>
+    <span style="font-size:11px; font-weight:400; color:rgba(255,255,255,0.6);">
+      Great work! You've built a reinforced concrete foundation.
+    </span>
+  </div>
+
+</div>
+
+<!-- Book hint — shown above hotbar -->
+<div id="book-hint">📖 Press <strong>B</strong> to open the Instruction Book</div>
+
+<!-- Instruction Book Overlay -->
+<div id="book-overlay">
+  <div id="book">
+    <button id="book-close" onclick="closeBook()">✕</button>
+
+    <h2>📖 The Construction Guide</h2>
+    <p style="font-size:0.8rem; color:#8a5a2a;">BuildRight — Foundation Lesson</p>
+
+    <h3>What is a Foundation?</h3>
+    <p>
+      A foundation is the lowest part of a building. It sits below the ground
+      and transfers the weight of the entire structure safely into the earth.
+      Without a solid foundation, a building will sink, tilt, or crack over time.
+    </p>
+
+    <h3>Why Do We Dig Down?</h3>
+    <p>
+      The top layer of soil is soft and unstable — it shifts with rain, tree roots,
+      and temperature changes. Builders dig below this layer to reach stable,
+      load-bearing soil or rock. In cold climates, foundations must also go below
+      the <strong>frost line</strong> — the depth at which the ground freezes —
+      because frozen ground expands and can lift or crack a shallow foundation.
+    </p>
+
+    <h3>What Blocks to Use</h3>
+    <ul>
+      <li><strong>Concrete</strong> — extremely strong under compression.
+        It holds up the weight of walls, floors, and roof above.</li>
+      <li><strong>Iron / Rebar</strong> — steel bars embedded in concrete.
+        Concrete is brittle under tension (pulling forces).
+        Rebar handles tension so the foundation doesn't crack.</li>
+    </ul>
+
+    <h3>Your Task — Step by Step</h3>
+    <ul>
+      <li>1. Walk to the <strong>orange marked zone</strong> on the ground</li>
+      <li>2. Dig out the 3 grass blocks in the zone</li>
+      <li>3. Fill the trench with 3 <strong>concrete</strong> blocks</li>
+      <li>4. Place 3 <strong>iron/rebar</strong> blocks on top</li>
+    </ul>
+
+    <p style="margin-top:16px; font-style:italic; color:#8a5a2a; font-size:0.82rem;">
+      Press B or click ✕ to close this book and start building.
+    </p>
+  </div>
+</div>
   <div id="lock-prompt">
     <div id="lock-box">
       <h1>🏗️ BuildRight</h1>
