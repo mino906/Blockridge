@@ -757,6 +757,263 @@
       return -2;
     }
   </script>
+<!-- tasks.js -->
+<script>
+  // ============================================================
+  // TASK SYSTEM — Foundation Lesson
+  //
+  // How auto-check works:
+  //   1. placeBlock() and removeBlock() in world.js fire events
+  //   2. This file listens for those events
+  //   3. When the right block is placed in the right position,
+  //      the current task auto-completes and the next unlocks
+  // ============================================================
+
+  // ── Build Zone Definition ──────────────────────────────────
+  // The zone is a 1x3 strip of blocks starting at x:0, y:1, z:5
+  // (5 blocks north of spawn). These are the exact grid positions
+  // the player must interact with for Steps 3, 4, and 5.
+  const BUILD_ZONE = [
+    { x: -1, y: 1, z: 5 },
+    { x:  0, y: 1, z: 5 },
+    { x:  1, y: 1, z: 5 },
+  ];
+
+  // ── Task State ─────────────────────────────────────────────
+  // Tracks which tasks are done and what the player has built
+  const taskState = {
+    current:       0,      // index of the active task (0–4)
+    bookOpened:    false,  // Step 1: did they open the book?
+    zoneVisited:   false,  // Step 2: did they enter the zone?
+    dugPositions:  new Set(), // Step 3: which zone blocks were removed
+    concretePositions: new Set(), // Step 4: concrete placed in zone
+    rebarPositions:    new Set(), // Step 5: iron placed on concrete
+  };
+
+  // ── Event Bus ──────────────────────────────────────────────
+  // A simple publish/subscribe system.
+  // world.js fires events like: GameEvents.emit("blockPlaced", {...})
+  // tasks.js listens with:      GameEvents.on("blockPlaced", fn)
+  //
+  // This keeps world.js and tasks.js completely separate —
+  // world.js doesn't know tasks.js exists. Clean architecture.
+  const GameEvents = {
+    _listeners: {},
+
+    on(event, fn) {
+      if (!this._listeners[event]) this._listeners[event] = [];
+      this._listeners[event].push(fn);
+    },
+
+    emit(event, data) {
+      (this._listeners[event] || []).forEach(fn => fn(data));
+    },
+  };
+
+  // ── Zone Marker Meshes ─────────────────────────────────────
+  // Visual orange outlines on the ground showing WHERE to build.
+  // Created once in initTasks(), disposed when zone is complete.
+  let _zoneMarkers = [];
+
+  function _createZoneMarkers(scene) {
+    BUILD_ZONE.forEach(pos => {
+      const marker = BABYLON.MeshBuilder.CreateBox(
+        "zone_" + pos.x + "_" + pos.z,
+        { width: 1.01, height: 0.05, depth: 1.01 },
+        scene
+      );
+      marker.position.set(pos.x, pos.y + 0.5, pos.z);
+      marker.isPickable = false; // player can't accidentally click markers
+
+      const mat = new BABYLON.StandardMaterial("zone_mat", scene);
+      mat.diffuseColor  = new BABYLON.Color3(1, 0.63, 0.08);
+      mat.emissiveColor = new BABYLON.Color3(0.8, 0.4, 0.0);
+      mat.alpha         = 0.55;
+      marker.material   = mat;
+
+      _zoneMarkers.push(marker);
+    });
+  }
+
+  function _removeZoneMarkers() {
+    _zoneMarkers.forEach(m => m.dispose());
+    _zoneMarkers = [];
+  }
+
+  // ── Helper: is a position inside the build zone? ───────────
+  function _inZone(x, y, z) {
+    return BUILD_ZONE.some(p =>
+      Math.round(x) === p.x &&
+      Math.round(y) === p.y &&
+      Math.round(z) === p.z
+    );
+  }
+
+  function _posKey(x, y, z) {
+    return Math.round(x) + "," + Math.round(y) + "," + Math.round(z);
+  }
+
+  // ── Card UI Helpers ────────────────────────────────────────
+  function _completeTask(index) {
+    const card   = document.getElementById("task-" + index);
+    const status = document.getElementById("task-status-" + index);
+    if (!card) return;
+    card.classList.remove("active");
+    card.classList.add("completed");
+    if (status) status.textContent = "✅";
+  }
+
+  function _activateTask(index) {
+    const card = document.getElementById("task-" + index);
+    if (!card) return;
+    card.classList.remove("locked");
+    card.classList.add("active");
+    taskState.current = index;
+  }
+
+  function _showCompletion() {
+    const el = document.getElementById("task-complete");
+    if (el) el.style.display = "block";
+    _removeZoneMarkers();
+
+    // Flash the screen green briefly — satisfying completion feel
+    const flash = document.createElement("div");
+    flash.style.cssText = `
+      position:fixed; inset:0; background:rgba(46,204,113,0.25);
+      z-index:500; pointer-events:none;
+      animation: fadeOut 1.2s ease forwards;
+    `;
+    document.head.insertAdjacentHTML("beforeend",
+      "<style>@keyframes fadeOut{from{opacity:1}to{opacity:0}}</style>"
+    );
+    document.body.appendChild(flash);
+    setTimeout(() => flash.remove(), 1200);
+  }
+
+  // ── toggleCard — called from HTML onclick ──────────────────
+  function toggleCard(index) {
+    // Locked cards don't expand
+    const card = document.getElementById("task-" + index);
+    if (!card || card.classList.contains("locked")) return;
+    // If this is the active card, do nothing (keep it expanded)
+    // If it's a completed card, allow toggling to re-read it
+    if (card.classList.contains("completed")) {
+      const body = card.querySelector(".task-body");
+      if (body) body.style.display =
+        body.style.display === "block" ? "none" : "block";
+    }
+  }
+
+  // ── Task Check Functions ───────────────────────────────────
+  // Each function checks one task's completion condition.
+  // Called by the event listeners below.
+
+  // Task 0: Player opened the book
+  function _checkBookOpened() {
+    if (taskState.current !== 0 || taskState.bookOpened) return;
+    taskState.bookOpened = true;
+    _completeTask(0);
+    _activateTask(1);
+    console.log("[tasks] Step 1 complete — book opened");
+  }
+
+  // Task 1: Player walks into the build zone
+  function _checkZoneVisited(playerX, playerZ) {
+    if (taskState.current !== 1 || taskState.zoneVisited) return;
+    const nearZone = BUILD_ZONE.some(p =>
+      Math.abs(playerX - p.x) < 1.5 &&
+      Math.abs(playerZ - p.z) < 1.5
+    );
+    if (!nearZone) return;
+    taskState.zoneVisited = true;
+    _completeTask(1);
+    _activateTask(2);
+    console.log("[tasks] Step 2 complete — zone reached");
+  }
+
+  // Task 2: Player digs all 3 zone blocks
+  function _checkDug(x, y, z) {
+    if (taskState.current !== 2) return;
+    if (!_inZone(x, y, z)) return;
+    taskState.dugPositions.add(_posKey(x, y, z));
+    if (taskState.dugPositions.size >= 3) {
+      _completeTask(2);
+      _activateTask(3);
+      console.log("[tasks] Step 3 complete — trench dug");
+    }
+  }
+
+  // Task 3: Player places 3 concrete blocks in the zone
+  function _checkConcrete(x, y, z, blockId) {
+    if (taskState.current !== 3) return;
+    if (blockId !== "concrete") return;
+    // Concrete goes where grass was — same x,z but y stays at 1
+    if (!BUILD_ZONE.some(p =>
+      Math.round(x) === p.x && Math.round(z) === p.z
+    )) return;
+    taskState.concretePositions.add(_posKey(x, y, z));
+    if (taskState.concretePositions.size >= 3) {
+      _completeTask(3);
+      _activateTask(4);
+      console.log("[tasks] Step 4 complete — concrete poured");
+    }
+  }
+
+  // Task 4: Player places 3 iron blocks on top of concrete
+  function _checkRebar(x, y, z, blockId) {
+    if (taskState.current !== 4) return;
+    if (blockId !== "iron") return;
+    // Rebar goes on TOP of the concrete layer (y = concrete y + 1)
+    const onConcrete = [...taskState.concretePositions].some(key => {
+      const [cx, cy, cz] = key.split(",").map(Number);
+      return Math.round(x) === cx &&
+             Math.round(z) === cz &&
+             Math.round(y) === cy + 1;
+    });
+    if (!onConcrete) return;
+    taskState.rebarPositions.add(_posKey(x, y, z));
+    if (taskState.rebarPositions.size >= 3) {
+      _completeTask(4);
+      _showCompletion();
+      console.log("[tasks] Step 5 complete — foundation done! 🎉");
+    }
+  }
+
+  // ── Zone proximity check runs every frame ──────────────────
+  // Registered in initTasks() via scene.onBeforeRenderObservable
+  function _zoneProximityCheck() {
+    if (taskState.current !== 1 || !_camera) return;
+    _checkZoneVisited(_camera.position.x, _camera.position.z);
+  }
+
+  // ── Wire up event listeners ────────────────────────────────
+  function initTasks(scene) {
+    // Draw the orange zone markers on the ground
+    _createZoneMarkers(scene);
+
+    // Listen for block removed → check digging task
+    GameEvents.on("blockRemoved", ({ x, y, z }) => {
+      _checkDug(x, y, z);
+    });
+
+    // Listen for block placed → check concrete + rebar tasks
+    GameEvents.on("blockPlaced", ({ x, y, z, blockId }) => {
+      _checkConcrete(x, y, z, blockId);
+      _checkRebar(x, y, z, blockId);
+    });
+
+    // Listen for book opened → check reading task
+    GameEvents.on("bookOpened", () => {
+      _checkBookOpened();
+    });
+
+    // Check zone proximity every frame
+    scene.onBeforeRenderObservable.add(_zoneProximityCheck);
+
+    console.log("[tasks] Task system initialized");
+  }
+</script>
+
 
   <!-- ui.js -->
   <script>

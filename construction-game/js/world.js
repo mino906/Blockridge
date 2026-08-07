@@ -64,9 +64,9 @@ function spawnBlock(x, y, z, blockId) {
  * Places a block at a grid position. Called by player.js on right-click.
  */
 function placeBlock(x, y, z, blockId) {
-  const key = toKey(x, y, z);
-  if (blockMap.has(key)) return false;
+  if (blockMap.has(toKey(x, y, z))) return false;
   spawnBlock(x, y, z, blockId);
+  GameEvents.emit("blockPlaced", { x, y, z, blockId }); // ADD THIS LINE
   return true;
 }
 
@@ -79,6 +79,7 @@ function removeBlock(x, y, z) {
   if (!mesh) return false;
   mesh.dispose();
   blockMap.delete(key);
+  GameEvents.emit("blockRemoved", { x, y, z }); // ADD THIS LINE
   return true;
 }
 
