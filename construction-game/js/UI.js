@@ -57,6 +57,10 @@ function initUI(canvas) {
   _els.pausedOverlay.addEventListener("click", () => {
     canvas.requestPointerLock().catch(() => {});
   });
+  // B key — toggle instruction book
+window.addEventListener("keydown", (e) => {
+  if (e.code === "KeyB") toggleBook();
+});
 
   // Fade controls hint after 8 seconds
   setTimeout(() => {
