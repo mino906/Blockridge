@@ -66,14 +66,13 @@ function _startGame() {
   );
   sunLight.intensity = 0.6;
 
-  // --- Initialize Modules (order matters!) ---
-  initBlockMaterials(scene);   // 1. Materials first
-  initWorld(scene);            // 2. World needs materials
-  initPlayer(scene, canvas);   // 3. Player needs world + scene
-  initUI(canvas);              // 4. UI needs canvas
-
-  // Set initial HUD block indicator
-  updateBlockIndicator(PHASE_1_HOTBAR[0]);
+initBlockMaterials(scene);
+initWorld(scene);
+initPlayer(scene, canvas);
+initBook();        // book must init before tasks (tasks fires bookOpened event)
+initTasks(scene);  // tasks must init after world (needs scene for zone markers)
+initUI(canvas);
+updateHotbar(0);
 
   // --- Render Loop ---
   engine.runRenderLoop(() => scene.render());
