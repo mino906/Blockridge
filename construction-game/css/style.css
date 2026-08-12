@@ -76,12 +76,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,0.7);
+  background: rgba(193, 0, 0, 0.571);
   backdrop-filter: blur(6px);
   z-index: 180;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.1s ease;
 }
 
 #book-overlay.open {
