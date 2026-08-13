@@ -53,10 +53,10 @@ function initUI(canvas) {
     }
   });
 
-  // Clicking the paused overlay re-locks the mouse
-  _els.pausedOverlay.addEventListener("click", () => {
-    canvas.requestPointerLock().catch(() => {});
-  });
+  window.addEventListener("keydown", (e) => {
+  if (e.code === "KeyB") toggleBook();
+});
+
   // B key — toggle instruction book
 window.addEventListener("keydown", (e) => {
   if (e.code === "KeyB") toggleBook();

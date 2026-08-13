@@ -66,13 +66,10 @@ function _startGame() {
   );
   sunLight.intensity = 0.6;
 
-initBlockMaterials(scene);
-initWorld(scene);
 initPlayer(scene, canvas);
-initBook();        // book must init before tasks (tasks fires bookOpened event)
-initTasks(scene);  // tasks must init after world (needs scene for zone markers)
+initBook();
+initTasks(scene);
 initUI(canvas);
-updateHotbar(0);
 
   // --- Render Loop ---
   engine.runRenderLoop(() => scene.render());
