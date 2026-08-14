@@ -66,10 +66,11 @@ function _startGame() {
   );
   sunLight.intensity = 0.6;
 
-initPlayer(scene, canvas);
-initBook();
-initTasks(scene);
-initUI(canvas);
+  // --- Initialize Game Systems ---
+  initPlayer(scene, canvas);
+  initBook();           // ← ADD THIS
+  initTasks(scene);     // ← ADD THIS
+  initUI(canvas);
 
   // --- Render Loop ---
   engine.runRenderLoop(() => scene.render());
