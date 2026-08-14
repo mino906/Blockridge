@@ -53,14 +53,10 @@ function initUI(canvas) {
     }
   });
 
+  // --- FIX #4: B key to toggle book ---
   window.addEventListener("keydown", (e) => {
-  if (e.code === "KeyB") toggleBook();
-});
-
-  // B key — toggle instruction book
-window.addEventListener("keydown", (e) => {
-  if (e.code === "KeyB") toggleBook();
-});
+    if (e.code === "KeyB") toggleBook();
+  });
 
   // Fade controls hint after 8 seconds
   setTimeout(() => {

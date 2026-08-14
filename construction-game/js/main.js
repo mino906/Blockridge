@@ -68,9 +68,9 @@ function _startGame() {
 
   // --- Initialize Game Systems ---
   initPlayer(scene, canvas);
-  initBook();           // ← ADD THIS
-  initTasks(scene);     // ← ADD THIS
-  initUI(canvas);
+  initBook();           // ← FIX #3 & #4: Added
+  initTasks(scene);     // ← FIX #3 & #4: Added
+  initUI(canvas);       // ← FIX #4: UI now has B key listener
 
   // --- Render Loop ---
   engine.runRenderLoop(() => scene.render());
