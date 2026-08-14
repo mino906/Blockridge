@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -157,6 +156,134 @@
     }
     #start-btn:hover  { background: #f5b534; transform: translateY(-2px); }
     #start-btn:active { transform: translateY(0); }
+
+    /* ── Task Panel ── */
+    #task-panel {
+      position: fixed;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 30;
+      width: 280px;
+      pointer-events: auto;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 70vh;
+      overflow-y: auto;
+      font-size: 13px;
+      color: #ddd;
+    }
+    #task-panel::-webkit-scrollbar { width: 4px; }
+    #task-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+
+    .task-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .task-card.active {
+      border-color: #e8a020;
+      background: rgba(232,160,32,0.08);
+    }
+    .task-card.completed {
+      border-color: #2ecc71;
+      background: rgba(46,204,113,0.06);
+      opacity: 0.8;
+    }
+    .task-card.locked {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+    .task-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .task-icon { font-size: 16px; }
+    .task-status { margin-left: auto; font-size: 14px; }
+    .task-body {
+      display: none;
+      margin-top: 6px;
+      font-size: 12px;
+      line-height: 1.5;
+      color: #bbb;
+      padding-left: 4px;
+    }
+    .task-card.active .task-body,
+    .task-card.completed .task-body { display: block; }
+
+    /* ── Book Overlay ── */
+    #book-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(6px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+    }
+    #book-overlay.open { display: flex; }
+
+    #book {
+      background: #fef6e8;
+      color: #2d1b0e;
+      width: 90%;
+      max-width: 560px;
+      max-height: 80vh;
+      overflow-y: auto;
+      border-radius: 16px;
+      padding: 30px 34px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+      position: relative;
+      font-family: 'Georgia', serif;
+      line-height: 1.7;
+    }
+    #book h2 { margin-top: 0; font-size: 1.8rem; }
+    #book h3 { margin-top: 1.2rem; font-size: 1.1rem; }
+    #book p  { margin: 0.6rem 0; }
+    #book ul { padding-left: 1.4rem; }
+    #book li { margin: 0.3rem 0; }
+
+    #book-close {
+      position: sticky;
+      top: 0;
+      float: right;
+      background: none;
+      border: none;
+      font-size: 1.8rem;
+      cursor: pointer;
+      color: #8a5a2a;
+      padding: 0 4px;
+    }
+    #book-close:hover { color: #3b1f0a; }
+
+    #book-hint {
+      position: fixed;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 25;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(6px);
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-size: 14px;
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.15);
+      transition: opacity 1s ease;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -166,7 +293,7 @@
   <div id="hud">
     <div id="crosshair">+</div>
 
-    <!-- Hotbar: 6 slots, one per block type -->
+    <!-- Hotbar: 6 slots -->
     <div id="hotbar">
       <div class="hotbar-slot active" id="slot-0"><span id="slot-icon-0">🟫</span><span class="slot-label">1 Dirt</span></div>
       <div class="hotbar-slot"        id="slot-1"><span id="slot-icon-1">⬜</span><span class="slot-label">2 Stone</span></div>
@@ -182,160 +309,159 @@
       Space — Jump &nbsp;|&nbsp; Shift — Sprint<br/>
       Left Click — Place &nbsp;|&nbsp; Right Click — Remove<br/>
       1–6 — Switch Block &nbsp;|&nbsp; ESC — Pause<br/>
-B — Open Instruction Book
+      B — Open Instruction Book
     </div>
   </div>
 
   <div id="paused-overlay">⏸ PAUSED — Click to Resume</div>
-<!-- Task Checklist Panel — right side of screen -->
-<div id="task-panel">
 
-  <div style="font-size:11px; font-weight:700; letter-spacing:0.1em;
-    color:rgba(255,255,255,0.4); text-transform:uppercase; margin-bottom:2px;
-    padding-left:4px;">
-    📋 Foundation Lesson
+  <!-- Task Checklist Panel -->
+  <div id="task-panel">
+    <div style="font-size:11px; font-weight:700; letter-spacing:0.1em;
+      color:rgba(255,255,255,0.4); text-transform:uppercase; margin-bottom:2px; padding-left:4px;">
+      📋 Foundation Lesson
+    </div>
+
+    <!-- Step 1 -->
+    <div class="task-card active" id="task-0" onclick="toggleCard(0)">
+      <div class="task-header">
+        <span class="task-icon">📖</span>
+        <span>Read the Foundation Guide</span>
+        <span class="task-status" id="task-status-0">○</span>
+      </div>
+      <div class="task-body">
+        Open your instruction book to learn what a foundation is
+        and why it matters before you start building.<br/><br/>
+        <strong>Press B</strong> to open the book.
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="task-card locked" id="task-1" onclick="toggleCard(1)">
+      <div class="task-header">
+        <span class="task-icon">📍</span>
+        <span>Find the Build Zone</span>
+        <span class="task-status" id="task-status-1">○</span>
+      </div>
+      <div class="task-body">
+        Walk to the <strong>orange marked area</strong> on the ground.
+        That is where your foundation will be built.<br/><br/>
+        It is marked 5 blocks north of your starting position.
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="task-card locked" id="task-2" onclick="toggleCard(2)">
+      <div class="task-header">
+        <span class="task-icon">⛏️</span>
+        <span>Dig the Foundation Trench</span>
+        <span class="task-status" id="task-status-2">○</span>
+      </div>
+      <div class="task-body">
+        Remove the <strong>3 grass blocks</strong> inside the build zone
+        to expose the ground below.<br/><br/>
+        <em>Real foundations are dug below the frost line
+        so the ground movement doesn't crack the structure.</em><br/><br/>
+        <strong>Left Click</strong> blocks to remove them.
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="task-card locked" id="task-3" onclick="toggleCard(3)">
+      <div class="task-header">
+        <span class="task-icon">🔲</span>
+        <span>Pour the Concrete</span>
+        <span class="task-status" id="task-status-3">○</span>
+      </div>
+      <div class="task-body">
+        Place <strong>3 concrete blocks</strong> to fill the trench
+        you just dug.<br/><br/>
+        <em>Concrete is used because it is strong under compression —
+        it can hold the weight of the entire house above it.</em><br/><br/>
+        Press <strong>3</strong> to select Concrete, then
+        <strong>Left Click</strong> to place.
+      </div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="task-card locked" id="task-4" onclick="toggleCard(4)">
+      <div class="task-header">
+        <span class="task-icon">🩶</span>
+        <span>Lay the Rebar</span>
+        <span class="task-status" id="task-status-4">○</span>
+      </div>
+      <div class="task-body">
+        Place <strong>3 iron/rebar blocks</strong> on top of the concrete.<br/><br/>
+        <em>Rebar (steel reinforcement bars) are embedded in concrete
+        to handle tension forces. Concrete alone cracks under tension —
+        rebar prevents this. Together they form reinforced concrete.</em><br/><br/>
+        Press <strong>6</strong> to select Iron/Rebar, then
+        <strong>Left Click</strong> to place.
+      </div>
+    </div>
+
+    <!-- Completion card -->
+    <div id="task-complete" style="display:none; background:rgba(46,204,113,0.2);
+      border:1.5px solid #2ecc71; border-radius:10px; padding:12px 14px;
+      font-size:13px; font-weight:700; color:#2ecc71; text-align:center;
+      backdrop-filter:blur(8px);">
+      ✅ Foundation Complete!<br/>
+      <span style="font-size:11px; font-weight:400; color:rgba(255,255,255,0.6);">
+        Great work! You've built a reinforced concrete foundation.
+      </span>
+    </div>
   </div>
 
-  <!-- Step 1 -->
-  <div class="task-card active" id="task-0" onclick="toggleCard(0)">
-    <div class="task-header">
-      <span class="task-icon">📖</span>
-      <span>Read the Foundation Guide</span>
-      <span class="task-status" id="task-status-0">○</span>
-    </div>
-    <div class="task-body">
-      Open your instruction book to learn what a foundation is
-      and why it matters before you start building.<br/><br/>
-      <strong>Press B</strong> to open the book.
-    </div>
-  </div>
+  <!-- Book hint -->
+  <div id="book-hint">📖 Press <strong>B</strong> to open the Instruction Book</div>
 
-  <!-- Step 2 -->
-  <div class="task-card locked" id="task-1" onclick="toggleCard(1)">
-    <div class="task-header">
-      <span class="task-icon">📍</span>
-      <span>Find the Build Zone</span>
-      <span class="task-status" id="task-status-1">○</span>
-    </div>
-    <div class="task-body">
-      Walk to the <strong>orange marked area</strong> on the ground.
-      That is where your foundation will be built.<br/><br/>
-      It is marked 5 blocks north of your starting position.
-    </div>
-  </div>
+  <!-- Instruction Book Overlay -->
+  <div id="book-overlay">
+    <div id="book">
+      <button id="book-close" onclick="closeBook()">✕</button>
 
-  <!-- Step 3 -->
-  <div class="task-card locked" id="task-2" onclick="toggleCard(2)">
-    <div class="task-header">
-      <span class="task-icon">⛏️</span>
-      <span>Dig the Foundation Trench</span>
-      <span class="task-status" id="task-status-2">○</span>
-    </div>
-    <div class="task-body">
-      Remove the <strong>3 grass blocks</strong> inside the build zone
-      to expose the ground below.<br/><br/>
-      <em>Real foundations are dug below the frost line
-      so the ground movement doesn't crack the structure.</em><br/><br/>
-      <strong>Left Click</strong> blocks to remove them.
-    </div>
-  </div>
+      <h2>📖 The Construction Guide</h2>
+      <p style="font-size:0.8rem; color:#8a5a2a;">BuildRight — Foundation Lesson</p>
 
-  <!-- Step 4 -->
-  <div class="task-card locked" id="task-3" onclick="toggleCard(3)">
-    <div class="task-header">
-      <span class="task-icon">🔲</span>
-      <span>Pour the Concrete</span>
-      <span class="task-status" id="task-status-3">○</span>
-    </div>
-    <div class="task-body">
-      Place <strong>3 concrete blocks</strong> to fill the trench
-      you just dug.<br/><br/>
-      <em>Concrete is used because it is strong under compression —
-      it can hold the weight of the entire house above it.</em><br/><br/>
-      Press <strong>3</strong> to select Concrete, then
-      <strong>Left Click</strong> to place.
+      <h3>What is a Foundation?</h3>
+      <p>
+        A foundation is the lowest part of a building. It sits below the ground
+        and transfers the weight of the entire structure safely into the earth.
+        Without a solid foundation, a building will sink, tilt, or crack over time.
+      </p>
+
+      <h3>Why Do We Dig Down?</h3>
+      <p>
+        The top layer of soil is soft and unstable — it shifts with rain, tree roots,
+        and temperature changes. Builders dig below this layer to reach stable,
+        load-bearing soil or rock. In cold climates, foundations must also go below
+        the <strong>frost line</strong> — the depth at which the ground freezes —
+        because frozen ground expands and can lift or crack a shallow foundation.
+      </p>
+
+      <h3>What Blocks to Use</h3>
+      <ul>
+        <li><strong>Concrete</strong> — extremely strong under compression.
+          It holds up the weight of walls, floors, and roof above.</li>
+        <li><strong>Iron / Rebar</strong> — steel bars embedded in concrete.
+          Concrete is brittle under tension (pulling forces).
+          Rebar handles tension so the foundation doesn't crack.</li>
+      </ul>
+
+      <h3>Your Task — Step by Step</h3>
+      <ul>
+        <li>1. Walk to the <strong>orange marked zone</strong> on the ground</li>
+        <li>2. Dig out the 3 grass blocks in the zone</li>
+        <li>3. Fill the trench with 3 <strong>concrete</strong> blocks</li>
+        <li>4. Place 3 <strong>iron/rebar</strong> blocks on top</li>
+      </ul>
+
+      <p style="margin-top:16px; font-style:italic; color:#8a5a2a; font-size:0.82rem;">
+        Press B or click ✕ to close this book and start building.
+      </p>
     </div>
   </div>
 
-  <!-- Step 5 -->
-  <div class="task-card locked" id="task-4" onclick="toggleCard(4)">
-    <div class="task-header">
-      <span class="task-icon">🩶</span>
-      <span>Lay the Rebar</span>
-      <span class="task-status" id="task-status-4">○</span>
-    </div>
-    <div class="task-body">
-      Place <strong>3 iron/rebar blocks</strong> on top of the concrete.<br/><br/>
-      <em>Rebar (steel reinforcement bars) are embedded in concrete
-      to handle tension forces. Concrete alone cracks under tension —
-      rebar prevents this. Together they form reinforced concrete.</em><br/><br/>
-      Press <strong>6</strong> to select Iron/Rebar, then
-      <strong>Left Click</strong> to place.
-    </div>
-  </div>
-
-  <!-- Completion card — hidden until all steps done -->
-  <div id="task-complete" style="display:none; background:rgba(46,204,113,0.2);
-    border:1.5px solid #2ecc71; border-radius:10px; padding:12px 14px;
-    font-size:13px; font-weight:700; color:#2ecc71; text-align:center;
-    backdrop-filter:blur(8px);">
-    ✅ Foundation Complete!<br/>
-    <span style="font-size:11px; font-weight:400; color:rgba(255,255,255,0.6);">
-      Great work! You've built a reinforced concrete foundation.
-    </span>
-  </div>
-
-</div>
-
-<!-- Book hint — shown above hotbar -->
-<div id="book-hint">📖 Press <strong>B</strong> to open the Instruction Book</div>
-
-<!-- Instruction Book Overlay -->
-<div id="book-overlay">
-  <div id="book">
-    <button id="book-close" onclick="closeBook()">✕</button>
-
-    <h2>📖 The Construction Guide</h2>
-    <p style="font-size:0.8rem; color:#8a5a2a;">BuildRight — Foundation Lesson</p>
-
-    <h3>What is a Foundation?</h3>
-    <p>
-      A foundation is the lowest part of a building. It sits below the ground
-      and transfers the weight of the entire structure safely into the earth.
-      Without a solid foundation, a building will sink, tilt, or crack over time.
-    </p>
-
-    <h3>Why Do We Dig Down?</h3>
-    <p>
-      The top layer of soil is soft and unstable — it shifts with rain, tree roots,
-      and temperature changes. Builders dig below this layer to reach stable,
-      load-bearing soil or rock. In cold climates, foundations must also go below
-      the <strong>frost line</strong> — the depth at which the ground freezes —
-      because frozen ground expands and can lift or crack a shallow foundation.
-    </p>
-
-    <h3>What Blocks to Use</h3>
-    <ul>
-      <li><strong>Concrete</strong> — extremely strong under compression.
-        It holds up the weight of walls, floors, and roof above.</li>
-      <li><strong>Iron / Rebar</strong> — steel bars embedded in concrete.
-        Concrete is brittle under tension (pulling forces).
-        Rebar handles tension so the foundation doesn't crack.</li>
-    </ul>
-
-    <h3>Your Task — Step by Step</h3>
-    <ul>
-      <li>1. Walk to the <strong>orange marked zone</strong> on the ground</li>
-      <li>2. Dig out the 3 grass blocks in the zone</li>
-      <li>3. Fill the trench with 3 <strong>concrete</strong> blocks</li>
-      <li>4. Place 3 <strong>iron/rebar</strong> blocks on top</li>
-    </ul>
-
-    <p style="margin-top:16px; font-style:italic; color:#8a5a2a; font-size:0.82rem;">
-      Press B or click ✕ to close this book and start building.
-    </p>
-  </div>
-</div>
   <div id="lock-prompt">
     <div id="lock-box">
       <h1>🏗️ BuildRight</h1>
@@ -344,8 +470,7 @@ B — Open Instruction Book
     </div>
   </div>
 
-
-  <!scripts begans here organize them properly and add comments to each script for clarity -->
+  <!-- =============== SCRIPTS =============== -->
 
   <!-- blocks.js -->
   <script>
@@ -359,7 +484,6 @@ B — Open Instruction Book
       iron:     { id:"iron",     name:"Iron/Rebar",  emoji:"🩶" },
     };
 
-    // 6-slot hotbar — all block types available from the start
     const PHASE_1_HOTBAR = ["dirt", "stone", "concrete", "wood", "sand", "iron"];
 
     const blockMaterials = {};
@@ -504,14 +628,10 @@ B — Open Instruction Book
     }
   </script>
 
-
-
-
-
   <!-- world.js -->
   <script>
     const WORLD_CONFIG = {
-      SIZE: 60,   // Larger flat world — more room to build
+      SIZE: 60,
     };
 
     const blockMap = new Map();
@@ -547,6 +667,10 @@ B — Open Instruction Book
       }
 
       blockMap.set(key, mesh);
+      // ---- FIRE EVENT for tasks ----
+      if (typeof GameEvents !== 'undefined') {
+        GameEvents.emit('blockPlaced', { x, y, z, blockId });
+      }
       return mesh;
     }
 
@@ -562,6 +686,10 @@ B — Open Instruction Book
       if (!mesh) return false;
       mesh.dispose();
       blockMap.delete(key);
+      // ---- FIRE EVENT for tasks ----
+      if (typeof GameEvents !== 'undefined') {
+        GameEvents.emit('blockRemoved', { x, y, z });
+      }
       return true;
     }
 
@@ -573,24 +701,15 @@ B — Open Instruction Book
       _worldScene = scene;
       const half  = Math.floor(WORLD_CONFIG.SIZE / 2);
 
-      // ── FLAT TERRAIN ──────────────────────────────────────────
-      // No Perlin noise. Every column is exactly the same height.
-      // Surface = y:1 (grass), subsurface = y:0 (stone bedrock).
-      // Simple, clean, and perfect for construction lessons.
       for (let x = -half; x < half; x++) {
         for (let z = -half; z < half; z++) {
-          spawnBlock(x, 1, z, "grass");   // Surface layer — grass
-          spawnBlock(x, 0, z, "stone");   // Bedrock floor — stone
+          spawnBlock(x, 1, z, "grass");
+          spawnBlock(x, 0, z, "stone");
         }
       }
-
       console.log("[world] Flat world generated: " + blockMap.size + " blocks");
     }
   </script>
-
-
-
-
 
   <!-- player.js -->
   <script>
@@ -690,7 +809,6 @@ B — Open Instruction Book
         const bx = gridX + Math.round(n.x);
         const by = gridY + Math.round(n.y);
         const bz = gridZ + Math.round(n.z);
-        // Don't place inside the player's body
         const px = Math.round(_camera.position.x);
         const pz = Math.round(_camera.position.z);
         const py = Math.round(_camera.position.y - PLAYER_CONFIG.EYE_HEIGHT);
@@ -699,13 +817,12 @@ B — Open Instruction Book
       }
     }
 
-    // Select a hotbar slot by index (0–5)
     function _selectSlot(index) {
       const blockId = PHASE_1_HOTBAR[index];
       if (!blockId) return;
       _selectedSlot    = index;
       _selectedBlockId = blockId;
-      updateHotbar(index);   // defined in ui.js
+      updateHotbar(index);
     }
 
     function _playerUpdate() {
@@ -728,12 +845,9 @@ B — Open Instruction Book
         pos.addInPlace(move);
       }
 
-      // Gravity
       _verticalVelocity -= PLAYER_CONFIG.GRAVITY;
       pos.y += _verticalVelocity;
 
-      // FIX: ground scan goes to y >= -2 (not y >= 2)
-      // so the player never falls through the floor
       const groundY   = _findGround(Math.round(pos.x), pos.y, Math.round(pos.z));
       const standingY = groundY + 1 + PLAYER_CONFIG.EYE_HEIGHT + PLAYER_CONFIG.FLOOR_OFFSET;
 
@@ -750,14 +864,12 @@ B — Open Instruction Book
         _isOnGround       = false;
       }
 
-      // World boundary clamp
       const half = Math.floor(WORLD_CONFIG.SIZE / 2) - 1;
       pos.x = Math.max(-half, Math.min(half, pos.x));
       pos.z = Math.max(-half, Math.min(half, pos.z));
     }
 
     function _findGround(x, fromY, z) {
-      // FIX: scan all the way to -2, not just to 2
       for (let y = Math.floor(fromY); y >= -2; y--) {
         if (getBlock(x, y, z)) return y;
       }
@@ -765,349 +877,242 @@ B — Open Instruction Book
     }
   </script>
 
+  <!-- tasks.js -->
+  <script>
+    // ============================================================
+    // TASK SYSTEM — Foundation Lesson
+    // ============================================================
 
+    const BUILD_ZONE = [
+      { x: -1, y: 1, z: 5 },
+      { x:  0, y: 1, z: 5 },
+      { x:  1, y: 1, z: 5 },
+    ];
 
+    const taskState = {
+      current:       0,
+      bookOpened:    false,
+      zoneVisited:   false,
+      dugPositions:  new Set(),
+      concretePositions: new Set(),
+      rebarPositions:    new Set(),
+    };
 
-<!-- tasks.js -->
+    const GameEvents = {
+      _listeners: {},
+      on(event, fn) {
+        if (!this._listeners[event]) this._listeners[event] = [];
+        this._listeners[event].push(fn);
+      },
+      emit(event, data) {
+        (this._listeners[event] || []).forEach(fn => fn(data));
+      },
+    };
 
+    let _zoneMarkers = [];
 
-<script>
-  // ============================================================
-  // TASK SYSTEM — Foundation Lesson
-  //
-  // How auto-check works:
-  //   1. placeBlock() and removeBlock() in world.js fire events
-  //   2. This file listens for those events
-  //   3. When the right block is placed in the right position,
-  //      the current task auto-completes and the next unlocks
-  // ============================================================
+    function _createZoneMarkers(scene) {
+      BUILD_ZONE.forEach(pos => {
+        const marker = BABYLON.MeshBuilder.CreateBox(
+          "zone_" + pos.x + "_" + pos.z,
+          { width: 1.01, height: 0.05, depth: 1.01 },
+          scene
+        );
+        marker.position.set(pos.x, pos.y + 0.5, pos.z);
+        marker.isPickable = false;
+        const mat = new BABYLON.StandardMaterial("zone_mat", scene);
+        mat.diffuseColor  = new BABYLON.Color3(1, 0.63, 0.08);
+        mat.emissiveColor = new BABYLON.Color3(0.8, 0.4, 0.0);
+        mat.alpha         = 0.55;
+        marker.material   = mat;
+        _zoneMarkers.push(marker);
+      });
+    }
 
-  // ── Build Zone Definition ──────────────────────────────────
-  // The zone is a 1x3 strip of blocks starting at x:0, y:1, z:5
-  // (5 blocks north of spawn). These are the exact grid positions
-  // the player must interact with for Steps 3, 4, and 5.
-  const BUILD_ZONE = [
-    { x: -1, y: 1, z: 5 },
-    { x:  0, y: 1, z: 5 },
-    { x:  1, y: 1, z: 5 },
-  ];
+    function _removeZoneMarkers() {
+      _zoneMarkers.forEach(m => m.dispose());
+      _zoneMarkers = [];
+    }
 
-  // ── Task State ─────────────────────────────────────────────
-  // Tracks which tasks are done and what the player has built
-  const taskState = {
-    current:       0,      // index of the active task (0–4)
-    bookOpened:    false,  // Step 1: did they open the book?
-    zoneVisited:   false,  // Step 2: did they enter the zone?
-    dugPositions:  new Set(), // Step 3: which zone blocks were removed
-    concretePositions: new Set(), // Step 4: concrete placed in zone
-    rebarPositions:    new Set(), // Step 5: iron placed on concrete
-  };
-
-  // ── Event Bus ──────────────────────────────────────────────
-  // A simple publish/subscribe system.
-  // world.js fires events like: GameEvents.emit("blockPlaced", {...})
-  // tasks.js listens with:      GameEvents.on("blockPlaced", fn)
-  //
-  // This keeps world.js and 
-  // world.js doesn't know tasks.js exists. Clean architecture.
-  const GameEvents = {
-    _listeners: {},
-
-    on(event, fn) {
-      if (!this._listeners[event]) this._listeners[event] = [];
-      this._listeners[event].push(fn);
-    },
-
-    emit(event, data) {
-      (this._listeners[event] || []).forEach(fn => fn(data));
-    },
-  };
-
-  // ── Zone Marker Meshes ─────────────────────────────────────
-  // Visual orange outlines on the ground showing WHERE to build.
-  // Created once in initTasks(), disposed when zone is complete.
-  let _zoneMarkers = [];
-
-  function _createZoneMarkers(scene) {
-    BUILD_ZONE.forEach(pos => {
-      const marker = BABYLON.MeshBuilder.CreateBox(
-        "zone_" + pos.x + "_" + pos.z,
-        { width: 1.01, height: 0.05, depth: 1.01 },
-        scene
+    function _inZone(x, y, z) {
+      return BUILD_ZONE.some(p =>
+        Math.round(x) === p.x &&
+        Math.round(y) === p.y &&
+        Math.round(z) === p.z
       );
-      marker.position.set(pos.x, pos.y + 0.5, pos.z);
-      marker.isPickable = false; // player can't accidentally click markers
-
-      const mat = new BABYLON.StandardMaterial("zone_mat", scene);
-      mat.diffuseColor  = new BABYLON.Color3(1, 0.63, 0.08);
-      mat.emissiveColor = new BABYLON.Color3(0.8, 0.4, 0.0);
-      mat.alpha         = 0.55;
-      marker.material   = mat;
-
-      _zoneMarkers.push(marker);
-    });
-  }
-
-  function _removeZoneMarkers() {
-    _zoneMarkers.forEach(m => m.dispose());
-    _zoneMarkers = [];
-  }
-
-  // ── Helper: is a position inside the build zone? ───────────
-  function _inZone(x, y, z) {
-    return BUILD_ZONE.some(p =>
-      Math.round(x) === p.x &&
-      Math.round(y) === p.y &&
-      Math.round(z) === p.z
-    );
-  }
-
-  function _posKey(x, y, z) {
-    return Math.round(x) + "," + Math.round(y) + "," + Math.round(z);
-  }
-
-  // ── Card UI Helpers ────────────────────────────────────────
-  function _completeTask(index) {
-    const card   = document.getElementById("task-" + index);
-    const status = document.getElementById("task-status-" + index);
-    if (!card) return;
-    card.classList.remove("active");
-    card.classList.add("completed");
-    if (status) status.textContent = "✅";
-  }
-
-  function _activateTask(index) {
-    const card = document.getElementById("task-" + index);
-    if (!card) return;
-    card.classList.remove("locked");
-    card.classList.add("active");
-    taskState.current = index;
-  }
-
-  function _showCompletion() {
-    const el = document.getElementById("task-complete");
-    if (el) el.style.display = "block";
-    _removeZoneMarkers();
-
-    // Flash the screen green briefly — satisfying completion feel
-    const flash = document.createElement("div");
-    flash.style.cssText = `
-      position:fixed; inset:0; background:rgba(46,204,113,0.25);
-      z-index:500; pointer-events:none;
-      animation: fadeOut 1.2s ease forwards;
-    `;
-    document.head.insertAdjacentHTML("beforeend",
-      "<style>@keyframes fadeOut{from{opacity:1}to{opacity:0}}</style>"
-    );
-    document.body.appendChild(flash);
-    setTimeout(() => flash.remove(), 1200);
-  }
-
-  // ── toggleCard — called from HTML onclick ──────────────────
-  function toggleCard(index) {
-    // Locked cards don't expand
-    const card = document.getElementById("task-" + index);
-    if (!card || card.classList.contains("locked")) return;
-    // If this is the active card, do nothing (keep it expanded)
-    // If it's a completed card, allow toggling to re-read it
-    if (card.classList.contains("completed")) {
-      const body = card.querySelector(".task-body");
-      if (body) body.style.display =
-        body.style.display === "block" ? "none" : "block";
-    }
-  }
-
-  // ── Task Check Functions ───────────────────────────────────
-  // Each function checks one task's completion condition.
-  // Called by the event listeners below.
-
-  // Task 0: Player opened the book
-  function _checkBookOpened() {
-    if (taskState.current !== 0 || taskState.bookOpened) return;
-    taskState.bookOpened = true;
-    _completeTask(0);
-    _activateTask(1);
-    console.log("[tasks] Step 1 complete — book opened");
-  }
-
-  // Task 1: Player walks into the build zone
-  function _checkZoneVisited(playerX, playerZ) {
-    if (taskState.current !== 1 || taskState.zoneVisited) return;
-    const nearZone = BUILD_ZONE.some(p =>
-      Math.abs(playerX - p.x) < 1.5 &&
-      Math.abs(playerZ - p.z) < 1.5
-    );
-    if (!nearZone) return;
-    taskState.zoneVisited = true;
-    _completeTask(1);
-    _activateTask(2);
-    console.log("[tasks] Step 2 complete — zone reached");
-  }
-
-  // Task 2: Player digs all 3 zone blocks
-  function _checkDug(x, y, z) {
-    if (taskState.current !== 2) return;
-    if (!_inZone(x, y, z)) return;
-    taskState.dugPositions.add(_posKey(x, y, z));
-    if (taskState.dugPositions.size >= 3) {
-      _completeTask(2);
-      _activateTask(3);
-      console.log("[tasks] Step 3 complete — trench dug");
-    }
-  }
-
-  // Task 3: Player places 3 concrete blocks in the zone
-  function _checkConcrete(x, y, z, blockId) {
-    if (taskState.current !== 3) return;
-    if (blockId !== "concrete") return;
-    // Concrete goes where grass was — same x,z but y stays at 1
-    if (!BUILD_ZONE.some(p =>
-      Math.round(x) === p.x && Math.round(z) === p.z
-    )) return;
-    taskState.concretePositions.add(_posKey(x, y, z));
-    if (taskState.concretePositions.size >= 3) {
-      _completeTask(3);
-      _activateTask(4);
-      console.log("[tasks] Step 4 complete — concrete poured");
-    }
-  }
-
-  // Task 4: Player places 3 iron blocks on top of concrete
-  function _checkRebar(x, y, z, blockId) {
-    if (taskState.current !== 4) return;
-    if (blockId !== "iron") return;
-    // Rebar goes on TOP of the concrete layer (y = concrete y + 1)
-    const onConcrete = [...taskState.concretePositions].some(key => {
-      const [cx, cy, cz] = key.split(",").map(Number);
-      return Math.round(x) === cx &&
-             Math.round(z) === cz &&
-             Math.round(y) === cy + 1;
-    });
-    if (!onConcrete) return;
-    taskState.rebarPositions.add(_posKey(x, y, z));
-    if (taskState.rebarPositions.size >= 3) {
-      _completeTask(4);
-      _showCompletion();
-      console.log("[tasks] Step 5 complete — foundation done! 🎉");
-    }
-  }
-
-  // ── Zone proximity check runs every frame ──────────────────
-  // Registered in initTasks() via scene.onBeforeRenderObservable
-  function _zoneProximityCheck() {
-    if (taskState.current !== 1 || !_camera) return;
-    _checkZoneVisited(_camera.position.x, _camera.position.z);
-  }
-
-  // ── Wire up event listeners ────────────────────────────────
-  function initTasks(scene) {
-    // Draw the orange zone markers on the ground
-    _createZoneMarkers(scene);
-
-    // Listen for block removed → check digging task
-    GameEvents.on("blockRemoved", ({ x, y, z }) => {
-      _checkDug(x, y, z);
-    });
-
-    // Listen for block placed → check concrete + rebar tasks
-    GameEvents.on("blockPlaced", ({ x, y, z, blockId }) => {
-      _checkConcrete(x, y, z, blockId);
-      _checkRebar(x, y, z, blockId);
-    });
-
-    // Listen for book opened → check reading task
-    GameEvents.on("bookOpened", () => {
-      _checkBookOpened();
-    });
-
-    // Check zone proximity every frame
-    scene.onBeforeRenderObservable.add(_zoneProximityCheck);
-
-    console.log("[tasks] Task system initialized");
-  }
-</script>
-
-
- <!-- book.js -->
-<script>
-  // ============================================================
-  // BOOK SYSTEM — Instruction Book Open/Close
-  //
-  // Responsibilities:
-  //   1. Open and close the book overlay
-  //   2. Fire the "bookOpened" event so tasks.js knows
-  //   3. Pause mouse look while book is open (so the camera
-  //      doesn't spin while the player is reading)
-  // ============================================================
-
-  let _bookOpen      = false;
-  let _bookHasOpened = false; // only fire the event once
-
-  function openBook() {
-    if (_bookOpen) return;
-    _bookOpen = true;
-
-    // Show the overlay
-    document.getElementById("book-overlay").classList.add("open");
-
-    // Release pointer lock so the player can scroll and click the book
-    // The paused overlay won't show because we handle this separately
-    document.exitPointerLock();
-
-    // Fire the event — tasks.js listens for this to complete Step 1
-    // Only fire once — opening the book a second time shouldn't
-    // re-trigger the task check
-    if (!_bookHasOpened) {
-      _bookHasOpened = true;
-      GameEvents.emit("bookOpened");
     }
 
-    console.log("[book] Book opened");
-  }
+    function _posKey(x, y, z) {
+      return Math.round(x) + "," + Math.round(y) + "," + Math.round(z);
+    }
 
-  function closeBook() {
-    if (!_bookOpen) return;
-    _bookOpen = false;
+    function _completeTask(index) {
+      const card   = document.getElementById("task-" + index);
+      const status = document.getElementById("task-status-" + index);
+      if (!card) return;
+      card.classList.remove("active");
+      card.classList.add("completed");
+      if (status) status.textContent = "✅";
+    }
 
-    // Hide the overlay
-    document.getElementById("book-overlay").classList.remove("open");
+    function _activateTask(index) {
+      const card = document.getElementById("task-" + index);
+      if (!card) return;
+      card.classList.remove("locked");
+      card.classList.add("active");
+      taskState.current = index;
+    }
 
-    // Re-lock the pointer so the player goes straight back to
-    // looking around — no extra click needed
-    const canvas = document.getElementById("renderCanvas");
-    setTimeout(() => canvas.requestPointerLock(), 80);
+    function _showCompletion() {
+      const el = document.getElementById("task-complete");
+      if (el) el.style.display = "block";
+      _removeZoneMarkers();
+      const flash = document.createElement("div");
+      flash.style.cssText = `
+        position:fixed; inset:0; background:rgba(46,204,113,0.25);
+        z-index:500; pointer-events:none;
+        animation: fadeOut 1.2s ease forwards;
+      `;
+      document.head.insertAdjacentHTML("beforeend",
+        "<style>@keyframes fadeOut{from{opacity:1}to{opacity:0}}</style>"
+      );
+      document.body.appendChild(flash);
+      setTimeout(() => flash.remove(), 1200);
+    }
 
-    console.log("[book] Book closed");
-  }
+    function toggleCard(index) {
+      const card = document.getElementById("task-" + index);
+      if (!card || card.classList.contains("locked")) return;
+      if (card.classList.contains("completed")) {
+        const body = card.querySelector(".task-body");
+        if (body) body.style.display = body.style.display === "block" ? "none" : "block";
+      }
+    }
 
-  function toggleBook() {
-    if (_bookOpen) closeBook();
-    else openBook();
-  }
+    function _checkBookOpened() {
+      if (taskState.current !== 0 || taskState.bookOpened) return;
+      taskState.bookOpened = true;
+      _completeTask(0);
+      _activateTask(1);
+      console.log("[tasks] Step 1 complete — book opened");
+    }
 
-  function initBook() {
-    // Close button inside the book
-    document.getElementById("book-close")
-      .addEventListener("click", closeBook);
+    function _checkZoneVisited(playerX, playerZ) {
+      if (taskState.current !== 1 || taskState.zoneVisited) return;
+      const nearZone = BUILD_ZONE.some(p =>
+        Math.abs(playerX - p.x) < 1.5 &&
+        Math.abs(playerZ - p.z) < 1.5
+      );
+      if (!nearZone) return;
+      taskState.zoneVisited = true;
+      _completeTask(1);
+      _activateTask(2);
+      console.log("[tasks] Step 2 complete — zone reached");
+    }
 
-    // Click outside the book (on the dark overlay) also closes it
-    document.getElementById("book-overlay")
-      .addEventListener("click", function(e) {
-        // Only close if they clicked the overlay itself,
-        // not something inside the book
+    function _checkDug(x, y, z) {
+      if (taskState.current !== 2) return;
+      if (!_inZone(x, y, z)) return;
+      taskState.dugPositions.add(_posKey(x, y, z));
+      if (taskState.dugPositions.size >= 3) {
+        _completeTask(2);
+        _activateTask(3);
+        console.log("[tasks] Step 3 complete — trench dug");
+      }
+    }
+
+    function _checkConcrete(x, y, z, blockId) {
+      if (taskState.current !== 3) return;
+      if (blockId !== "concrete") return;
+      if (!BUILD_ZONE.some(p =>
+        Math.round(x) === p.x && Math.round(z) === p.z
+      )) return;
+      taskState.concretePositions.add(_posKey(x, y, z));
+      if (taskState.concretePositions.size >= 3) {
+        _completeTask(3);
+        _activateTask(4);
+        console.log("[tasks] Step 4 complete — concrete poured");
+      }
+    }
+
+    function _checkRebar(x, y, z, blockId) {
+      if (taskState.current !== 4) return;
+      if (blockId !== "iron") return;
+      const onConcrete = [...taskState.concretePositions].some(key => {
+        const [cx, cy, cz] = key.split(",").map(Number);
+        return Math.round(x) === cx &&
+               Math.round(z) === cz &&
+               Math.round(y) === cy + 1;
+      });
+      if (!onConcrete) return;
+      taskState.rebarPositions.add(_posKey(x, y, z));
+      if (taskState.rebarPositions.size >= 3) {
+        _completeTask(4);
+        _showCompletion();
+        console.log("[tasks] Step 5 complete — foundation done! 🎉");
+      }
+    }
+
+    function _zoneProximityCheck() {
+      if (taskState.current !== 1 || !_camera) return;
+      _checkZoneVisited(_camera.position.x, _camera.position.z);
+    }
+
+    function initTasks(scene) {
+      _createZoneMarkers(scene);
+      GameEvents.on("blockRemoved", ({ x, y, z }) => _checkDug(x, y, z));
+      GameEvents.on("blockPlaced",  ({ x, y, z, blockId }) => {
+        _checkConcrete(x, y, z, blockId);
+        _checkRebar(x, y, z, blockId);
+      });
+      GameEvents.on("bookOpened", () => _checkBookOpened());
+      scene.onBeforeRenderObservable.add(_zoneProximityCheck);
+      console.log("[tasks] Task system initialized");
+    }
+  </script>
+
+  <!-- book.js -->
+  <script>
+    let _bookOpen      = false;
+    let _bookHasOpened = false;
+
+    function openBook() {
+      if (_bookOpen) return;
+      _bookOpen = true;
+      document.getElementById("book-overlay").classList.add("open");
+      document.exitPointerLock();
+      if (!_bookHasOpened) {
+        _bookHasOpened = true;
+        GameEvents.emit("bookOpened");
+      }
+      console.log("[book] Book opened");
+    }
+
+    function closeBook() {
+      if (!_bookOpen) return;
+      _bookOpen = false;
+      document.getElementById("book-overlay").classList.remove("open");
+      const canvas = document.getElementById("renderCanvas");
+      setTimeout(() => canvas.requestPointerLock(), 80);
+      console.log("[book] Book closed");
+    }
+
+    function toggleBook() {
+      if (_bookOpen) closeBook(); else openBook();
+    }
+
+    function initBook() {
+      document.getElementById("book-close").addEventListener("click", closeBook);
+      document.getElementById("book-overlay").addEventListener("click", function(e) {
         if (e.target === this) closeBook();
       });
-
-    // Hide the book hint after 12 seconds
-    // (player has seen it, no need to keep showing it)
-    setTimeout(() => {
-      const hint = document.getElementById("book-hint");
-      if (hint) hint.style.opacity = "0";
-    }, 12000);
-
-    console.log("[book] Book system initialized");
-  }
-</script>
+      setTimeout(() => {
+        const hint = document.getElementById("book-hint");
+        if (hint) hint.style.opacity = "0";
+      }, 12000);
+      console.log("[book] Book system initialized");
+    }
+  </script>
 
   <!-- ui.js -->
   <script>
@@ -1134,10 +1139,15 @@ B — Open Instruction Book
       });
 
       pausedOverlay.addEventListener("click", () => canvas.requestPointerLock());
+
+      // ---- FIX #4: Add B key listener ----
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "KeyB") toggleBook();
+      });
+
       setTimeout(() => controlsHint.classList.add("hidden"), 8000);
     }
 
-    // Highlight the active hotbar slot and dim the rest
     function updateHotbar(activeIndex) {
       for (let i = 0; i < PHASE_1_HOTBAR.length; i++) {
         const slot = document.getElementById("slot-" + i);
@@ -1146,7 +1156,6 @@ B — Open Instruction Book
       }
     }
 
-    // Keep old name for compatibility
     function updateBlockIndicator(blockId) {
       const index = PHASE_1_HOTBAR.indexOf(blockId);
       if (index !== -1) updateHotbar(index);
@@ -1164,23 +1173,19 @@ B — Open Instruction Book
         const engine = new BABYLON.Engine(canvas, true);
         const scene  = new BABYLON.Scene(engine);
 
-        // Sky
         scene.clearColor = new BABYLON.Color4(0.47, 0.73, 0.95, 1.0);
 
-        // Fog — hides world edge cleanly
         scene.fogMode  = BABYLON.Scene.FOGMODE_LINEAR;
         scene.fogStart = 25;
         scene.fogEnd   = 48;
         scene.fogColor = new BABYLON.Color3(0.47, 0.73, 0.95);
 
-        // Sky light
         const amb = new BABYLON.HemisphericLight("amb", new BABYLON.Vector3(0,1,0), scene);
         amb.diffuse     = new BABYLON.Color3(0.9, 0.95, 1.0);
         amb.specular    = new BABYLON.Color3(0.1, 0.1, 0.1);
         amb.groundColor = new BABYLON.Color3(0.4, 0.3, 0.2);
         amb.intensity   = 1.1;
 
-        // Sun
         const sun = new BABYLON.DirectionalLight("sun",
           new BABYLON.Vector3(-0.6,-1.2,-0.8).normalize(), scene);
         sun.diffuse   = new BABYLON.Color3(1.0, 0.95, 0.85);
@@ -1190,9 +1195,13 @@ B — Open Instruction Book
         initBlockMaterials(scene);
         initWorld(scene);
         initPlayer(scene, canvas);
+
+        // ---- FIX #3: Initialize book and task systems ----
+        initBook();
+        initTasks(scene);
+
         initUI(canvas);
 
-        // Activate slot 0 (dirt) on start
         updateHotbar(0);
 
         engine.runRenderLoop(() => scene.render());
@@ -1215,9 +1224,6 @@ B — Open Instruction Book
         console.error("[main] Fatal error:", err);
       }
     })();
-
-
-    
   </script>
 
 </body>
