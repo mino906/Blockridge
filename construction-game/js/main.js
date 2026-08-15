@@ -67,10 +67,13 @@ function _startGame() {
   sunLight.intensity = 0.6;
 
   // --- Initialize Game Systems ---
-  initPlayer(scene, canvas);
-  initBook();           // ← FIX #3 & #4: Added
-  initTasks(scene);     // ← FIX #3 & #4: Added
-  initUI(canvas);       // ← FIX #4: UI now has B key listener
+ initBlockMaterials(scene);
+initWorld(scene);
+initPlayer(scene, canvas);
+initHighlight(scene);
+initBook();
+initTasks(scene);
+initUI(canvas);
 
   // --- Render Loop ---
   engine.runRenderLoop(() => scene.render());

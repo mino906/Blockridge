@@ -631,7 +631,7 @@
   <!-- world.js -->
   <script>
     const WORLD_CONFIG = {
-      SIZE: 60,
+      SIZE: 32,
     };
 
     const blockMap = new Map();
@@ -699,7 +699,7 @@
 
     function initWorld(scene) {
       _worldScene = scene;
-      const half  = Math.floor(WORLD_CONFIG.SIZE / 2);
+      const half  = Math.floor(WORLD_CONFIG.SIZE / 1.5);
 
       for (let x = -half; x < half; x++) {
         for (let z = -half; z < half; z++) {
@@ -1113,7 +1113,77 @@
       console.log("[book] Book system initialized");
     }
   </script>
+<!-- highlight.js -->
+<script>
+  // ============================================================
+  // BLOCK HIGHLIGHT SYSTEM
+  // Draws a wireframe outline on whichever block the player
+  // is currently looking at. Updates every frame.
+  // ============================================================
 
+  let _highlightMesh = null;
+  let _highlightMat  = null;
+
+  function initHighlight(scene) {
+    // Create a slightly oversized box used as the outline
+    // We use wireframe mode so only the edges show
+    _highlightMesh = BABYLON.MeshBuilder.CreateBox(
+      "blockHighlight",
+      { size: 1.02 },
+      scene
+    );
+
+    _highlightMat = new BABYLON.StandardMaterial("highlightMat", scene);
+    _highlightMat.wireframe    = true;
+    _highlightMat.emissiveColor = new BABYLON.Color3(1, 0.85, 0.1); // warm yellow
+    _highlightMat.disableLighting = true;
+
+    _highlightMesh.material   = _highlightMat;
+    _highlightMesh.isPickable = false;   // raycast ignores it
+    _highlightMesh.setEnabled(false);    // hidden until player looks at a block
+
+    // Run every frame — check what the player is looking at
+    scene.onBeforeRenderObservable.add(_updateHighlight);
+
+    console.log("[highlight] Initialized");
+  }
+
+  function _updateHighlight() {
+    // Need camera and canvas to cast a ray
+    if (!_camera || !_playerCanvas) {
+      _highlightMesh.setEnabled(false);
+      return;
+    }
+
+    // Only show highlight when pointer is locked (in-game)
+    if (document.pointerLockElement !== _playerCanvas) {
+      _highlightMesh.setEnabled(false);
+      return;
+    }
+
+    // Cast ray from screen center forward
+    const ray = _playerScene.createPickingRay(
+      _playerCanvas.width  / 2,
+      _playerCanvas.height / 2,
+      BABYLON.Matrix.Identity(),
+      _camera
+    );
+
+    const hit = _playerScene.pickWithRay(
+      ray,
+      (m) => m.isPickable && m.metadata && m.metadata.blockId
+    );
+
+    if (hit && hit.hit && hit.distance <= PLAYER_CONFIG.REACH) {
+      // Snap highlight box exactly onto the hit block's grid position
+      const { gridX, gridY, gridZ } = hit.pickedMesh.metadata;
+      _highlightMesh.position.set(gridX, gridY, gridZ);
+      _highlightMesh.setEnabled(true);
+    } else {
+      _highlightMesh.setEnabled(false);
+    }
+  }
+</script>
   <!-- ui.js -->
   <script>
     let _gameStarted = false;
@@ -1195,6 +1265,7 @@
         initBlockMaterials(scene);
         initWorld(scene);
         initPlayer(scene, canvas);
+        initHighlight(scene);
 
         // ---- FIX #3: Initialize book and task systems ----
         initBook();
