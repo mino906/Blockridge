@@ -71,6 +71,7 @@ function _startGame() {
 initWorld(scene);
 initPlayer(scene, canvas);
 initHighlight(scene);
+initCompletion();
 initBook();
 initTasks(scene);
 initUI(canvas);
