@@ -632,129 +632,87 @@
   </script>
 
   <!-- world.js -->
-<script>
-  const WORLD_CONFIG = {
-    SIZE:        40,
-    SURFACE_Y:    2,
-    UNDERGROUND: -50,
-  };
+  <script>
+    const WORLD_CONFIG = {
+      SIZE: 32,
+    };
 
-  const blockMap = new Map();
-  let _scene = null;
+    const blockMap = new Map();
+    let _worldScene = null;
 
-  const _DIRS = [
-    [ 1, 0, 0], [-1, 0, 0],
-    [ 0, 1, 0], [ 0,-1, 0],
-    [ 0, 0, 1], [ 0, 0,-1],
-  ];
-
-  function toKey(x, y, z) {
-    return Math.round(x) + "," + Math.round(y) + "," + Math.round(z);
-  }
-
-  function _createMesh(x, y, z, blockId) {
-    const key  = toKey(x, y, z);
-    const data = blockMap.get(key);
-    if (!data || data.mesh) return;
-
-    const mat     = getBlockMaterial(blockId);
-    const isMulti = mat instanceof BABYLON.MultiMaterial;
-    const options = { size: 0.99 };
-
-    if (isMulti) {
-      const uv = new BABYLON.Vector4(0, 0, 1, 1);
-      options.faceUV = [uv, uv, uv, uv, uv, uv];
+    function toKey(x, y, z) {
+      return Math.round(x) + "," + Math.round(y) + "," + Math.round(z);
     }
 
-    const mesh = BABYLON.MeshBuilder.CreateBox("block_" + key, options, _scene);
-    mesh.position.set(x, y, z);
-    mesh.material   = mat;
-    mesh.isPickable = true;
-    mesh.metadata   = { blockId, gridX: x, gridY: y, gridZ: z };
+    function spawnBlock(x, y, z, blockId) {
+      const key = toKey(x, y, z);
+      if (blockMap.has(key)) return null;
 
-    if (isMulti) {
-      mesh.subMeshes = [];
-      const vc = mesh.getTotalVertices();
-      for (let i = 0; i < 6; i++) new BABYLON.SubMesh(i, 0, vc, i * 6, 6, mesh);
-    }
+      const mat     = getBlockMaterial(blockId);
+      const isMulti = mat instanceof BABYLON.MultiMaterial;
+      const options = { size: 0.99 };
 
-    data.mesh = mesh;
-  }
-
-  function _isExposed(x, y, z) {
-    return _DIRS.some(([dx, dy, dz]) =>
-      !blockMap.has(toKey(x + dx, y + dy, z + dz))
-    );
-  }
-
-  function spawnBlock(x, y, z, blockId) {
-    const key = toKey(x, y, z);
-    if (blockMap.has(key)) return null;
-    blockMap.set(key, { blockId, mesh: null });
-    if (_isExposed(x, y, z)) _createMesh(x, y, z, blockId);
-    return blockMap.get(key);
-  }
-
-  function placeBlock(x, y, z, blockId) {
-    if (blockMap.has(toKey(x, y, z))) return false;
-    spawnBlock(x, y, z, blockId);
-    GameEvents.emit("blockPlaced", { x, y, z, blockId });
-    _DIRS.forEach(([dx, dy, dz]) => {
-      const nx = x+dx, ny = y+dy, nz = z+dz;
-      const nData = blockMap.get(toKey(nx, ny, nz));
-      if (nData && nData.mesh && !_isExposed(nx, ny, nz)) {
-        nData.mesh.dispose();
-        nData.mesh = null;
+      if (isMulti) {
+        const uv = new BABYLON.Vector4(0, 0, 1, 1);
+        options.faceUV = [uv, uv, uv, uv, uv, uv];
       }
-    });
-    return true;
-  }
 
-  function removeBlock(x, y, z) {
-    const key  = toKey(x, y, z);
-    const data = blockMap.get(key);
-    if (!data) return false;
-    if (data.mesh) { data.mesh.dispose(); data.mesh = null; }
-    blockMap.delete(key);
-    GameEvents.emit("blockRemoved", { x, y, z });
-    _DIRS.forEach(([dx, dy, dz]) => {
-      const nx = x+dx, ny = y+dy, nz = z+dz;
-      const nData = blockMap.get(toKey(nx, ny, nz));
-      if (nData && !nData.mesh) _createMesh(nx, ny, nz, nData.blockId);
-    });
-    return true;
-  }
+      const mesh = BABYLON.MeshBuilder.CreateBox("block_" + key, options, _worldScene);
+      mesh.position.set(x, y, z);
+      mesh.material    = mat;
+      mesh.isPickable  = true;
+      mesh.metadata    = { blockId, gridX: x, gridY: y, gridZ: z };
 
-  function getBlock(x, y, z) {
-    const data = blockMap.get(toKey(x, y, z));
-    return data ? (data.mesh || data) : null;
-  }
+      if (isMulti) {
+        mesh.subMeshes = [];
+        const vc = mesh.getTotalVertices();
+        for (let i = 0; i < 6; i++) new BABYLON.SubMesh(i, 0, vc, i * 6, 6, mesh);
+      }
 
-  function initWorld(scene) {
-    _scene = scene;
-    const half = Math.floor(WORLD_CONFIG.SIZE / 2);
+      blockMap.set(key, mesh);
+      // ---- FIRE EVENT for tasks ----
+      if (typeof GameEvents !== 'undefined') {
+        GameEvents.emit('blockPlaced', { x, y, z, blockId });
+      }
+      return mesh;
+    }
 
-    for (let x = -half; x < half; x++) {
-      for (let z = -half; z < half; z++) {
-        // Build bottom-up so neighbor checks work correctly
-        for (let y = WORLD_CONFIG.UNDERGROUND; y < 0; y++) {
-          spawnBlock(x, y, z, "stone");
+    function placeBlock(x, y, z, blockId) {
+      if (blockMap.has(toKey(x, y, z))) return false;
+      spawnBlock(x, y, z, blockId);
+      return true;
+    }
+
+    function removeBlock(x, y, z) {
+      const key  = toKey(x, y, z);
+      const mesh = blockMap.get(key);
+      if (!mesh) return false;
+      mesh.dispose();
+      blockMap.delete(key);
+      // ---- FIRE EVENT for tasks ----
+      if (typeof GameEvents !== 'undefined') {
+        GameEvents.emit('blockRemoved', { x, y, z });
+      }
+      return true;
+    }
+
+    function getBlock(x, y, z) {
+      return blockMap.get(toKey(x, y, z)) || null;
+    }
+
+    function initWorld(scene) {
+      _worldScene = scene;
+      const half  = Math.floor(WORLD_CONFIG.SIZE / 1.5);
+
+      for (let x = -half; x < half; x++) {
+        for (let z = -half; z < half; z++) {
+          spawnBlock(x, 1, z, "grass");
+          spawnBlock(x, 0, z, "stone");
         }
-        spawnBlock(x, 0, z, "stone");  // y=0 stone
-        spawnBlock(x, 1, z, "dirt");   // y=1 dirt
-        spawnBlock(x, 2, z, "grass");  // y=2 grass surface
       }
+      console.log("[world] Flat world generated: " + blockMap.size + " blocks");
     }
-
-    const total    = blockMap.size;
-    const rendered = [...blockMap.values()].filter(d => d.mesh).length;
-    console.log(
-      "[world] " + total + " blocks total, " +
-      rendered + " meshes rendered, " +
-      (total - rendered) + " culled underground"
-    );
-  }
-</script>
+  </script>
 
   <!-- player.js -->
   <script>

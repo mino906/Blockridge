@@ -207,9 +207,10 @@ function _update() {
   pos.x = Math.max(-half + 1, Math.min(half - 1, pos.x));
   pos.z = Math.max(-half + 1, Math.min(half - 1, pos.z));
 }
-function _findGround(x, fromY, z) {
-  for (let y = Math.floor(fromY); y >= -52; y--) {
+
+function _findGroundBelow(x, fromY, z) {
+  for (let y = Math.floor(fromY); y >= WORLD_CONFIG.UNDERGROUND; y--) {
     if (getBlock(x, y, z)) return y;
   }
-  return -52;
+  return WORLD_CONFIG.UNDERGROUND - 1;
 }
