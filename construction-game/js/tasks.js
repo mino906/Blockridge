@@ -1,9 +1,19 @@
-tasks.js
 function _showCompletion() {
   const el = document.getElementById("task-complete");
   if (el) el.style.display = "block";
   _removeZoneMarkers();
-  setTimeout(() => showCompletionScreen(), 1400); // ← is this line here?
+  const flash = document.createElement("div");
+  flash.style.cssText = `
+    position:fixed; inset:0; background:rgba(46,204,113,0.25);
+    z-index:500; pointer-events:none;
+    animation: fadeOut 1.2s ease forwards;
+  `;
+  document.head.insertAdjacentHTML("beforeend",
+    "<style>@keyframes fadeOut{from{opacity:1}to{opacity:0}}</style>"
+  );
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 1200);
+  setTimeout(() => showCompletionScreen(), 1400); // ← THIS LINE WAS MISSING
 }
 // tasks.js - Complete Task System with 5 Lessons
 

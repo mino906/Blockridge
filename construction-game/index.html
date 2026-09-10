@@ -1492,16 +1492,17 @@
         sun.specular  = new BABYLON.Color3(0.2, 0.2, 0.15);
         sun.intensity = 0.75;
 
-        initBlockMaterials(scene);
-        initWorld(scene);
-        initPlayer(scene, canvas);
-        initHighlight(scene);
+       initBlockMaterials(scene);
+initWorld(scene);
+initPlayer(scene, canvas);
+initHighlight(scene);
+initCompletion();     // ← ADD THIS LINE
 
-        // ---- FIX #3: Initialize book and task systems ----
-        initBook();
-        initTasks(scene);
+// ---- FIX #3: Initialize book and task systems ----
+initBook();
+initTasks(scene);
 
-        initUI(canvas);
+initUI(canvas);
 
         updateHotbar(0);
 
