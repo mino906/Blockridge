@@ -1,129 +1,190 @@
 // ============================================================
 // world.js — Terrain Generation & Block Management
-//
-// Responsibilities:
-//   1. Generate a flat terrain (no height variation)
-//   2. Spawn the correct block meshes for each (x, z) column
-//   3. Track all placed blocks in a spatial map
-//   4. Expose placeBlock() and removeBlock() for player.js to call
+// Features: flat terrain, 50 underground layers, mesh culling
+// Only surface-exposed blocks get GPU meshes. Underground
+// blocks are data-only until the player digs to them.
 // ============================================================
 
-// --- World Configuration ------------------------------------
 const WORLD_CONFIG = {
-  SIZE: 40,            // World is SIZE x SIZE blocks wide (40x40 = 1600 blocks)
-  MAX_HEIGHT: 6,       // (unused now, kept for future)
-  BASE_HEIGHT: 1,      // (unused now, kept for future)
-  NOISE_SCALE: 0.12,   // (unused now, kept for future)
-  BLOCK_SIZE: 1,       // Each block is 1 Babylon unit (1 meter)
+  SIZE:         40,
+  SURFACE_Y:    2,    // grass level
+  UNDERGROUND: -50,   // deepest layer
 };
 
-// --- Spatial Block Map --------------------------------------
+// blockMap stores { blockId, mesh } per position
+// mesh is null for hidden/culled blocks
 const blockMap = new Map();
 let _scene = null;
 
-/**
- * Converts x, y, z integers into the string key used in blockMap.
- */
+// The 6 face directions — used for neighbor checks
+const _DIRS = [
+  [ 1, 0, 0], [-1, 0, 0],
+  [ 0, 1, 0], [ 0,-1, 0],
+  [ 0, 0, 1], [ 0, 0,-1],
+];
+
 function toKey(x, y, z) {
-  return `${Math.round(x)},${Math.round(y)},${Math.round(z)}`;
+  return Math.round(x) + "," + Math.round(y) + "," + Math.round(z);
 }
 
-/**
- * Returns a constant terrain height – FLAT WORLD.
- * All columns have the same height: 2 blocks above bedrock.
- */
-function getTerrainHeight(x, z) {
-  // Flat terrain: always return 2 (top surface at y=2)
-  return 2;
+// ── Mesh Creation ───────────────────────────────────────────
+// Creates a Babylon mesh for one block. Only called when the
+// block is confirmed to be exposed to at least one air face.
+function _createMesh(x, y, z, blockId) {
+  const key  = toKey(x, y, z);
+  const data = blockMap.get(key);
+  if (!data || data.mesh) return; // already has mesh or doesn't exist
+
+  const mat     = getBlockMaterial(blockId);
+  const isMulti = mat instanceof BABYLON.MultiMaterial;
+  const options = { size: 0.99 };
+
+  if (isMulti) {
+    const uv = new BABYLON.Vector4(0, 0, 1, 1);
+    options.faceUV = [uv, uv, uv, uv, uv, uv];
+  }
+
+  const mesh = BABYLON.MeshBuilder.CreateBox(
+    "block_" + key, options, _scene
+  );
+  mesh.position.set(x, y, z);
+  mesh.material   = mat;
+  mesh.isPickable = true;
+  mesh.metadata   = { blockId, gridX: x, gridY: y, gridZ: z };
+
+  if (isMulti) {
+    mesh.subMeshes = [];
+    const vc = mesh.getTotalVertices();
+    for (let i = 0; i < 6; i++) {
+      new BABYLON.SubMesh(i, 0, vc, i * 6, 6, mesh);
+    }
+  }
+
+  data.mesh = mesh;
 }
 
-/**
- * Creates a single block mesh at the given world position.
- * Registers it in blockMap so it can be found and removed later.
- */
+// ── Exposure Check ──────────────────────────────────────────
+// Returns true if at least one neighbor is air (no block data)
+function _isExposed(x, y, z) {
+  return _DIRS.some(([dx, dy, dz]) =>
+    !blockMap.has(toKey(x + dx, y + dy, z + dz))
+  );
+}
+
+// ── spawnBlock ──────────────────────────────────────────────
+// Registers a block in blockMap. Only creates a mesh if the
+// block is exposed. Called during world generation AND by
+// placeBlock() for player-placed blocks.
 function spawnBlock(x, y, z, blockId) {
   const key = toKey(x, y, z);
   if (blockMap.has(key)) return null;
 
-  const mesh = BABYLON.MeshBuilder.CreateBox(
-    `block_${key}`,
-    { size: 0.99 },
-    _scene
-  );
-  
+  // Register as data first (mesh = null)
+  blockMap.set(key, { blockId, mesh: null });
 
-  mesh.position.set(x, y, z);
-  mesh.material = getBlockMaterial(blockId);
-  mesh.metadata = { blockId, gridX: x, gridY: y, gridZ: z };
-  mesh.isPickable = true;
+  // Only render if exposed to air
+  if (_isExposed(x, y, z)) {
+    _createMesh(x, y, z, blockId);
+  }
 
-  blockMap.set(key, mesh);
-  return mesh;
+  return blockMap.get(key);
 }
 
-/**
- * Places a block at a grid position. Called by player.js on right-click.
- */
+// ── placeBlock ──────────────────────────────────────────────
+// Called by player right-click. Places a block and hides any
+// neighbor meshes that are now fully surrounded.
 function placeBlock(x, y, z, blockId) {
   if (blockMap.has(toKey(x, y, z))) return false;
+
   spawnBlock(x, y, z, blockId);
-  GameEvents.emit("blockPlaced", { x, y, z, blockId }); // ADD THIS LINE
+  GameEvents.emit("blockPlaced", { x, y, z, blockId });
+
+  // Neighbors may now be fully enclosed — remove their meshes
+  _DIRS.forEach(([dx, dy, dz]) => {
+    const nx = x + dx, ny = y + dy, nz = z + dz;
+    const nData = blockMap.get(toKey(nx, ny, nz));
+    if (nData && nData.mesh && !_isExposed(nx, ny, nz)) {
+      nData.mesh.dispose();
+      nData.mesh = null;
+    }
+  });
+
   return true;
 }
 
-/**
- * Removes the block at a grid position. Called by player.js on left-click.
- */
+// ── removeBlock ─────────────────────────────────────────────
+// Called by player left-click. Removes block and reveals any
+// neighbors that are now exposed for the first time.
 function removeBlock(x, y, z) {
-  const key = toKey(x, y, z);
-  const mesh = blockMap.get(key);
-  if (!mesh) return false;
-  mesh.dispose();
+  const key  = toKey(x, y, z);
+  const data = blockMap.get(key);
+  if (!data) return false;
+
+  // Dispose mesh if it exists
+  if (data.mesh) {
+    data.mesh.dispose();
+    data.mesh = null;
+  }
   blockMap.delete(key);
-  GameEvents.emit("blockRemoved", { x, y, z }); // ADD THIS LINE
+
+  GameEvents.emit("blockRemoved", { x, y, z });
+
+  // Reveal neighbors that were hidden by this block
+  _DIRS.forEach(([dx, dy, dz]) => {
+    const nx = x + dx, ny = y + dy, nz = z + dz;
+    const nData = blockMap.get(toKey(nx, ny, nz));
+    if (nData && !nData.mesh) {
+      // Was hidden — now exposed, give it a mesh
+      _createMesh(nx, ny, nz, nData.blockId);
+    }
+  });
+
   return true;
 }
 
-/**
- * Returns the block mesh at a position, or null if empty.
- */
+// ── getBlock ────────────────────────────────────────────────
+// Returns the mesh if it exists, or null.
+// player.js uses this for ground detection.
 function getBlock(x, y, z) {
-  return blockMap.get(toKey(x, y, z)) || null;
+  const data = blockMap.get(toKey(x, y, z));
+  // Return mesh OR a truthy value so ground detection works
+  // even for culled (mesh-less) blocks
+  return data ? (data.mesh || data) : null;
 }
 
-/**
- * Generates the full flat terrain.
- * - Grass at y = 2
- * - Dirt at y = 1
- * - Stone at y = 0 (bedrock)
- */
+// ── initWorld ───────────────────────────────────────────────
+// Generates the flat world with 50 underground layers.
+// Generation order matters — we build bottom-up so that
+// neighbor checks during spawnBlock work correctly.
 function initWorld(scene) {
   _scene = scene;
-
   const half = Math.floor(WORLD_CONFIG.SIZE / 2);
 
   for (let x = -half; x < half; x++) {
     for (let z = -half; z < half; z++) {
-      const h = getTerrainHeight(x, z); // always 2
 
-      // Top block: grass
-      spawnBlock(x, h, z, "grass");
-
-      // Middle layer: dirt (only if h > 1)
-      for (let y = h - 1; y > 0; y--) {
-        spawnBlock(x, y, z, "dirt");
-      }
-
-      // Bottom layer: stone at y=0
-      // Bottom layer: stone at y=0
-      spawnBlock(x, 0, z, "stone");
-
-      // 50 underground layers below y=0
-      for (let y = -1; y >= -50; y--) {
+      // Underground layers first (deepest to surface)
+      // These will all be culled — fully surrounded on all sides
+      for (let y = WORLD_CONFIG.UNDERGROUND; y < 0; y++) {
         spawnBlock(x, y, z, "stone");
       }
+
+      // y=0 stone layer
+      spawnBlock(x, 0, z, "stone");
+
+      // y=1 dirt layer
+      spawnBlock(x, 1, z, "dirt");
+
+      // y=2 grass surface — always exposed on top
+      spawnBlock(x, 2, z, "grass");
     }
   }
 
-  console.log(`[world.js] Flat world generated: ${blockMap.size} blocks across ${WORLD_CONFIG.SIZE}x${WORLD_CONFIG.SIZE} area`);
+  const total    = blockMap.size;
+  const rendered = [...blockMap.values()].filter(d => d.mesh).length;
+  console.log(
+    "[world] " + total + " blocks total, " +
+    rendered + " meshes rendered, " +
+    (total - rendered) + " culled underground"
+  );
 }
