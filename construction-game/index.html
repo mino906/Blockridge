@@ -969,9 +969,13 @@
     }
 
     function _showCompletion() {
+      // Suppress the pause overlay from re-appearing once we unlock the pointer
+      window.__lessonComplete = true;
+
       const el = document.getElementById("task-complete");
       if (el) el.style.display = "block";
       _removeZoneMarkers();
+
       const flash = document.createElement("div");
       flash.style.cssText = `
         position:fixed; inset:0; background:rgba(46,204,113,0.25);
@@ -983,6 +987,7 @@
       );
       document.body.appendChild(flash);
       setTimeout(() => flash.remove(), 1200);
+      setTimeout(() => showCompletionScreen(), 1400); // ← triggers the victory screen
     }
 
     function toggleCard(index) {
@@ -1126,8 +1131,9 @@
   // Displays score, time taken, and a "Next Lesson" button.
   // ============================================================
 
-  let _startTime     = null;   // records when the game started
-  let _completedTime = null;   // records when lesson finished
+  let _startTime       = null;   // records when the game started
+  let _completedTime   = null;   // records when lesson finished
+  let _completionShown = false;  // guards against showing twice
 
   function initCompletion() {
     // Start the timer the moment the game begins
@@ -1136,8 +1142,10 @@
   }
 
   // Called by tasks.js when all 5 steps are done
-  // We hook into _showCompletion by extending it below
   function showCompletionScreen() {
+    if (_completionShown) return;   // never show twice
+    _completionShown = true;
+
     _completedTime = Date.now();
 
     const elapsed   = Math.floor((_completedTime - _startTime) / 1000);
@@ -1147,11 +1155,16 @@
       ? minutes + "m " + seconds + "s"
       : seconds + "s";
 
-    // Calculate star rating based on time
+    // Star rating based on time
     // Under 3 min = 3 stars, under 6 min = 2 stars, otherwise 1 star
-    let stars = "⭐";
-    if (elapsed < 180) stars = "⭐⭐⭐";
-    else if (elapsed < 360) stars = "⭐⭐";
+    let starCount = 1;
+    if (elapsed < 180)      starCount = 3;
+    else if (elapsed < 360) starCount = 2;
+    const stars = "⭐".repeat(starCount);
+
+    // Hide the pause overlay — we're taking over the screen now
+    const paused = document.getElementById("paused-overlay");
+    if (paused) paused.classList.remove("visible");
 
     // Build the screen
     const screen = document.createElement("div");
@@ -1253,7 +1266,7 @@
             min-width: 100px;
           ">
             <div style="font-size: 1.5rem; font-weight: 700; color: #2ecc71;">
-              ${stars.length / 2}
+              ${starCount}
             </div>
             <div style="font-size: 11px; color: rgba(255,255,255,0.4);
               text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px;">
@@ -1298,7 +1311,7 @@
           onmouseout="this.style.background='rgba(255,255,255,0.08)'"
           >🔄 Try Again</button>
 
-          <button onclick="_nextLesson()" style="
+          <button onclick="_nextLesson(this)" style="
             padding: 12px 28px;
             font-size: 0.9rem;
             font-weight: 700;
@@ -1321,7 +1334,7 @@
     // Release pointer lock so player can click the buttons
     document.exitPointerLock();
 
-    console.log("[completion] Screen shown — time: " + timeStr + " stars: " + stars);
+    console.log("[completion] Screen shown — time: " + timeStr + " stars: " + starCount);
   }
 
   function _restartLesson() {
@@ -1329,10 +1342,11 @@
     location.reload();
   }
 
-  function _nextLesson() {
+  function _nextLesson(btn) {
     // Phase 4 Step 3 will add Lesson 2 here.
     // For now show a coming soon message.
-    const btn = event.target;
+    if (!btn) btn = document.querySelector('#completion-screen button:last-child');
+    if (!btn) return;
     btn.textContent = "🚧 Coming Soon!";
     btn.style.background = "#e8a020";
     btn.style.color = "#1a0f00";
@@ -1433,7 +1447,8 @@
       document.addEventListener("pointerlockchange", () => {
         if (document.pointerLockElement === canvas) {
           pausedOverlay.classList.remove("visible");
-        } else if (_gameStarted) {
+        } else if (_gameStarted && !window.__lessonComplete) {
+          // Don't show "PAUSED" once the lesson is finished
           pausedOverlay.classList.add("visible");
         }
       });
@@ -1496,7 +1511,7 @@
 initWorld(scene);
 initPlayer(scene, canvas);
 initHighlight(scene);
-initCompletion();     // ← ADD THIS LINE
+initCompletion();     // ← starts the lesson timer
 
 // ---- FIX #3: Initialize book and task systems ----
 initBook();
