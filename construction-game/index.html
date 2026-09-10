@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BuildRight — Construction Learning Game</title>
 
-  <!-- Babylon.js only — SimplexNoise removed, no longer needed -->
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
 
   <style>
@@ -285,10 +284,9 @@
       pointer-events: none;
     }
     @keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
+      from { opacity: 0; transform: scale(0.95); }
+      to   { opacity: 1; transform: scale(1); }
+    }
   </style>
 </head>
 <body>
@@ -312,7 +310,7 @@
       <strong>Controls</strong><br/>
       WASD — Move &nbsp;|&nbsp; Mouse — Look<br/>
       Space — Jump &nbsp;|&nbsp; Shift — Sprint<br/>
-      Left Click — Place &nbsp;|&nbsp; Right Click — Remove<br/>
+      Left Click — Remove &nbsp;|&nbsp; Right Click — Place<br/>
       1–6 — Switch Block &nbsp;|&nbsp; ESC — Pause<br/>
       B — Open Instruction Book
     </div>
@@ -384,7 +382,7 @@
         <em>Concrete is used because it is strong under compression —
         it can hold the weight of the entire house above it.</em><br/><br/>
         Press <strong>3</strong> to select Concrete, then
-        <strong>Left Click</strong> to place.
+        <strong>Right Click</strong> to place.
       </div>
     </div>
 
@@ -401,7 +399,7 @@
         to handle tension forces. Concrete alone cracks under tension —
         rebar prevents this. Together they form reinforced concrete.</em><br/><br/>
         Press <strong>6</strong> to select Iron/Rebar, then
-        <strong>Left Click</strong> to place.
+        <strong>Right Click</strong> to place.
       </div>
     </div>
 
@@ -895,10 +893,11 @@
     ];
 
     const taskState = {
-      current:       0,
-      bookOpened:    false,
-      zoneVisited:   false,
-      dugPositions:  new Set(),
+      lesson:       1,          // ← NEW: which lesson is active
+      current:      0,
+      bookOpened:   false,
+      zoneVisited:  false,
+      dugPositions: new Set(),
       concretePositions: new Set(),
       rebarPositions:    new Set(),
     };
@@ -969,7 +968,6 @@
     }
 
     function _showCompletion() {
-      // Suppress the pause overlay from re-appearing once we unlock the pointer
       window.__lessonComplete = true;
 
       const el = document.getElementById("task-complete");
@@ -987,7 +985,7 @@
       );
       document.body.appendChild(flash);
       setTimeout(() => flash.remove(), 1200);
-      setTimeout(() => showCompletionScreen(), 1400); // ← triggers the victory screen
+      setTimeout(() => showCompletionScreen(), 1400);
     }
 
     function toggleCard(index) {
@@ -999,7 +997,10 @@
       }
     }
 
+    // ---------- lesson-1 checks (guarded so they go quiet in lesson 2) ----------
+
     function _checkBookOpened() {
+      if (taskState.lesson !== 1) return;         // ← NEW
       if (taskState.current !== 0 || taskState.bookOpened) return;
       taskState.bookOpened = true;
       _completeTask(0);
@@ -1008,6 +1009,7 @@
     }
 
     function _checkZoneVisited(playerX, playerZ) {
+      if (taskState.lesson !== 1) return;         // ← NEW
       if (taskState.current !== 1 || taskState.zoneVisited) return;
       const nearZone = BUILD_ZONE.some(p =>
         Math.abs(playerX - p.x) < 1.5 &&
@@ -1021,6 +1023,7 @@
     }
 
     function _checkDug(x, y, z) {
+      if (taskState.lesson !== 1) return;         // ← NEW
       if (taskState.current !== 2) return;
       if (!_inZone(x, y, z)) return;
       taskState.dugPositions.add(_posKey(x, y, z));
@@ -1032,6 +1035,7 @@
     }
 
     function _checkConcrete(x, y, z, blockId) {
+      if (taskState.lesson !== 1) return;         // ← NEW
       if (taskState.current !== 3) return;
       if (blockId !== "concrete") return;
       if (!BUILD_ZONE.some(p =>
@@ -1046,6 +1050,7 @@
     }
 
     function _checkRebar(x, y, z, blockId) {
+      if (taskState.lesson !== 1) return;         // ← NEW
       if (taskState.current !== 4) return;
       if (blockId !== "iron") return;
       const onConcrete = [...taskState.concretePositions].some(key => {
@@ -1064,6 +1069,7 @@
     }
 
     function _zoneProximityCheck() {
+      if (taskState.lesson !== 1) return;         // ← NEW
       if (taskState.current !== 1 || !_camera) return;
       _checkZoneVisited(_camera.position.x, _camera.position.z);
     }
@@ -1123,311 +1129,419 @@
       console.log("[book] Book system initialized");
     }
   </script>
-  <!-- completion.js -->
-<script>
-  // ============================================================
-  // COMPLETION SCREEN
-  // Shows after the foundation lesson is fully done.
-  // Displays score, time taken, and a "Next Lesson" button.
-  // ============================================================
 
-  let _startTime       = null;   // records when the game started
-  let _completedTime   = null;   // records when lesson finished
-  let _completionShown = false;  // guards against showing twice
+  <!-- completion.js  — REWRITTEN -->
+  <script>
+    // ============================================================
+    // COMPLETION SCREEN  (now generic + reusable for every lesson)
+    // ============================================================
 
-  function initCompletion() {
-    // Start the timer the moment the game begins
-    _startTime = Date.now();
-    console.log("[completion] Timer started");
-  }
+    let _startTime       = null;
+    let _completedTime   = null;
+    let _completionShown = false;
 
-  // Called by tasks.js when all 5 steps are done
-  function showCompletionScreen() {
-    if (_completionShown) return;   // never show twice
-    _completionShown = true;
+    function initCompletion() {
+      _startTime = Date.now();
+      console.log("[completion] Timer started");
+    }
 
-    _completedTime = Date.now();
+    /* Fade out + remove the victory screen (used when moving on) */
+    function dismissCompletion() {
+      const s = document.getElementById("completion-screen");
+      if (!s) return;
+      s.style.transition = "opacity 0.25s ease";
+      s.style.opacity = "0";
+      setTimeout(() => s.remove(), 250);
+    }
 
-    const elapsed   = Math.floor((_completedTime - _startTime) / 1000);
-    const minutes   = Math.floor(elapsed / 60);
-    const seconds   = elapsed % 60;
-    const timeStr   = minutes > 0
-      ? minutes + "m " + seconds + "s"
-      : seconds + "s";
+    function _statBox(value, label, color) {
+      return `<div style="
+          background: rgba(255,255,255,0.06);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 12px;
+          padding: 14px 20px;
+          min-width: 100px;">
+          <div style="font-size: 1.5rem; font-weight: 700; color: ${color};">${value}</div>
+          <div style="font-size: 11px; color: rgba(255,255,255,0.4);
+            text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px;">${label}</div>
+        </div>`;
+    }
 
-    // Star rating based on time
-    // Under 3 min = 3 stars, under 6 min = 2 stars, otherwise 1 star
-    let starCount = 1;
-    if (elapsed < 180)      starCount = 3;
-    else if (elapsed < 360) starCount = 2;
-    const stars = "⭐".repeat(starCount);
+    /* opts = { title, subtitle, steps, learned[], nextLabel, hasNext } */
+    function showCompletionScreen(opts) {
+      opts = opts || {};
+      if (_completionShown) return;
+      _completionShown = true;
 
-    // Hide the pause overlay — we're taking over the screen now
-    const paused = document.getElementById("paused-overlay");
-    if (paused) paused.classList.remove("visible");
+      _completedTime = Date.now();
+      const elapsed = Math.max(0, Math.floor((_completedTime - _startTime) / 1000));
+      const mins    = Math.floor(elapsed / 60);
+      const secs    = elapsed % 60;
+      const timeStr = mins > 0 ? mins + "m " + secs + "s" : secs + "s";
 
-    // Build the screen
-    const screen = document.createElement("div");
-    screen.id = "completion-screen";
-    screen.style.cssText = `
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.85);
-      backdrop-filter: blur(10px);
-      z-index: 600;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      animation: fadeIn 0.6s ease forwards;
-    `;
+      let starCount = 1;
+      if (elapsed < 180)      starCount = 3;
+      else if (elapsed < 360) starCount = 2;
+      const stars = "⭐".repeat(starCount);
 
-    screen.innerHTML = `
-      <div style="
-        background: linear-gradient(145deg, #1a2a1a, #0d1f0d);
-        border: 2px solid #2ecc71;
-        border-radius: 20px;
-        padding: 48px 56px;
-        text-align: center;
-        max-width: 480px;
-        width: 90%;
-        box-shadow: 0 0 60px rgba(46,204,113,0.3);
-        font-family: 'Segoe UI', system-ui, sans-serif;
-        color: #fff;
-      ">
-        <!-- Trophy -->
-        <div style="font-size: 4rem; margin-bottom: 8px;">🏆</div>
+      const title     = opts.title     || "Lesson Complete!";
+      const subtitle  = opts.subtitle  || "Foundation Lesson — BuildRight";
+      const stepsDone = opts.steps     || "5 / 5";
+      const nextLabel = opts.nextLabel || "Next Lesson →";
+      const hasNext   = opts.hasNext !== false;
+      const learned   = opts.learned   || [
+        "Why foundations must be dug into stable ground",
+        "Why concrete handles compression forces",
+        "Why rebar handles tension so concrete doesn't crack",
+        "How reinforced concrete is built layer by layer"
+      ];
+      const learnedHtml = learned.map(t => "✔ " + t).join("<br/>");
 
-        <!-- Title -->
-        <h1 style="
-          font-size: 1.8rem;
-          font-weight: 800;
-          color: #2ecc71;
-          margin: 0 0 4px;
-          letter-spacing: -0.02em;
-        ">Lesson Complete!</h1>
+      const paused = document.getElementById("paused-overlay");
+      if (paused) paused.classList.remove("visible");
 
-        <p style="
-          font-size: 0.95rem;
-          color: rgba(255,255,255,0.5);
-          margin: 0 0 28px;
-          letter-spacing: 0.05em;
-          text-transform: uppercase;
-        ">Foundation Lesson — BuildRight</p>
+      const screen = document.createElement("div");
+      screen.id = "completion-screen";
+      screen.style.cssText = `
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.85);
+        backdrop-filter: blur(10px);
+        z-index: 600;
+        display: flex; align-items: center; justify-content: center;
+        animation: fadeIn 0.6s ease forwards;
+      `;
 
-        <!-- Stars -->
-        <div style="font-size: 2.2rem; margin-bottom: 24px; letter-spacing: 6px;">
-          ${stars}
-        </div>
-
-        <!-- Stats -->
+      screen.innerHTML = `
         <div style="
-          display: flex;
-          gap: 16px;
-          justify-content: center;
-          margin-bottom: 32px;
+          background: linear-gradient(145deg, #1a2a1a, #0d1f0d);
+          border: 2px solid #2ecc71;
+          border-radius: 20px;
+          padding: 48px 56px;
+          text-align: center;
+          max-width: 480px;
+          width: 90%;
+          box-shadow: 0 0 60px rgba(46,204,113,0.3);
+          font-family: 'Segoe UI', system-ui, sans-serif;
+          color: #fff;
         ">
-          <div style="
-            background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 14px 20px;
-            min-width: 100px;
-          ">
-            <div style="font-size: 1.5rem; font-weight: 700; color: #f5b534;">
-              ${timeStr}
-            </div>
-            <div style="font-size: 11px; color: rgba(255,255,255,0.4);
-              text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px;">
-              Time
-            </div>
+          <div style="font-size: 4rem; margin-bottom: 8px;">🏆</div>
+
+          <h1 style="font-size: 1.8rem; font-weight: 800; color: #2ecc71;
+            margin: 0 0 4px; letter-spacing: -0.02em;">${title}</h1>
+
+          <p style="font-size: 0.95rem; color: rgba(255,255,255,0.5);
+            margin: 0 0 28px; letter-spacing: 0.05em; text-transform: uppercase;">
+            ${subtitle}</p>
+
+          <div style="font-size: 2.2rem; margin-bottom: 24px; letter-spacing: 6px;">
+            ${stars}
+          </div>
+
+          <div style="display: flex; gap: 16px; justify-content: center; margin-bottom: 32px;">
+            ${_statBox(timeStr, "Time", "#f5b534")}
+            ${_statBox(stepsDone, "Steps Done", "#5dade2")}
+            ${_statBox(String(starCount), "Stars", "#2ecc71")}
           </div>
 
           <div style="
-            background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 14px 20px;
-            min-width: 100px;
+            background: rgba(46,204,113,0.08);
+            border: 1px solid rgba(46,204,113,0.2);
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 28px;
+            text-align: left;
+            font-size: 13px;
+            line-height: 1.7;
+            color: rgba(255,255,255,0.75);
           ">
-            <div style="font-size: 1.5rem; font-weight: 700; color: #5dade2;">
-              5 / 5
-            </div>
-            <div style="font-size: 11px; color: rgba(255,255,255,0.4);
-              text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px;">
-              Steps Done
-            </div>
+            <strong style="color:#2ecc71;">📚 What you learned:</strong><br/>
+            ${learnedHtml}
           </div>
 
-          <div style="
-            background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 14px 20px;
-            min-width: 100px;
-          ">
-            <div style="font-size: 1.5rem; font-weight: 700; color: #2ecc71;">
-              ${starCount}
-            </div>
-            <div style="font-size: 11px; color: rgba(255,255,255,0.4);
-              text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px;">
-              Stars
-            </div>
+          <div style="display: flex; gap: 12px; justify-content: center;">
+            <button id="btn-retry" style="
+              padding: 12px 24px;
+              font-size: 0.9rem;
+              font-weight: 600;
+              background: rgba(255,255,255,0.08);
+              color: #fff;
+              border: 1px solid rgba(255,255,255,0.2);
+              border-radius: 8px;
+              cursor: pointer;"
+              onmouseover="this.style.background='rgba(255,255,255,0.15)'"
+              onmouseout="this.style.background='rgba(255,255,255,0.08)'"
+            >🔄 Try Again</button>
+
+            <button id="btn-next" style="
+              padding: 12px 28px;
+              font-size: 0.9rem;
+              font-weight: 700;
+              background: #2ecc71;
+              color: #0d1f0d;
+              border: none;
+              border-radius: 8px;
+              cursor: pointer;"
+              onmouseover="this.style.background='#27ae60'"
+              onmouseout="this.style.background='#2ecc71'"
+            >${nextLabel}</button>
           </div>
         </div>
+      `;
 
-        <!-- What you learned -->
-        <div style="
-          background: rgba(46,204,113,0.08);
-          border: 1px solid rgba(46,204,113,0.2);
-          border-radius: 10px;
-          padding: 14px 18px;
-          margin-bottom: 28px;
-          text-align: left;
-          font-size: 13px;
-          line-height: 1.7;
-          color: rgba(255,255,255,0.75);
-        ">
-          <strong style="color:#2ecc71;">📚 What you learned:</strong><br/>
-          ✔ Why foundations must be dug into stable ground<br/>
-          ✔ Why concrete handles compression forces<br/>
-          ✔ Why rebar handles tension so concrete doesn't crack<br/>
-          ✔ How reinforced concrete is built layer by layer
+      document.body.appendChild(screen);
+
+      // ---- bind buttons with real listeners (no inline onclick) ----
+      const retry = screen.querySelector("#btn-retry");
+      const next  = screen.querySelector("#btn-next");
+
+      if (retry) retry.addEventListener("click", () => location.reload());
+
+      if (next) {
+        if (hasNext) {
+          next.addEventListener("click", () => {
+            dismissCompletion();
+            startLesson2();            // defined in lesson2.js
+          });
+        } else {
+          next.textContent = "🎓 Keep Building";
+          next.style.background = "#5dade2";
+          next.style.color = "#0a1a26";
+          next.onmouseover = function () { this.style.background = "#3498db"; };
+          next.onmouseout  = function () { this.style.background = "#5dade2"; };
+          next.addEventListener("click", () => {
+            dismissCompletion();
+            window.__lessonComplete = true;
+            const canvas = document.getElementById("renderCanvas");
+            if (canvas) canvas.requestPointerLock();
+          });
+        }
+      }
+
+      document.exitPointerLock();
+      console.log("[completion] Screen shown — " + timeStr + " / " + starCount + "★");
+    }
+  </script>
+
+  <!-- lesson2.js  — NEW -->
+  <script>
+    // ============================================================
+    // LESSON 2 — "Build the Walls"
+    // Loaded when the player clicks "Next Lesson" on the
+    // foundation victory screen.
+    // ============================================================
+
+    const LESSON2 = (() => {
+      const positions = [];
+      for (let x = -1; x <= 1; x++)
+        for (let y = 3; y <= 4; y++)
+          positions.push({ x, y, z: 5 });   // 3 wide × 2 high wall
+      return {
+        POSITIONS: positions,
+        REQUIRED:  positions.length,        // 6
+      };
+    })();
+
+    let _l2Started = false;
+    let _l2Done    = false;
+    let _l2Placed  = new Set();
+    let _l2Markers = [];
+
+    function startLesson2() {
+      if (_l2Started) return;
+      _l2Started = true;
+      _l2Done    = false;
+      _l2Placed.clear();
+
+      // ---- reset the global lesson state ----
+      window.__lessonComplete = false;   // pause overlay works again
+      _completionShown        = false;   // allow a new victory screen
+      _startTime              = Date.now();
+      taskState.lesson        = 2;
+      taskState.current       = 0;
+
+      _l2ClearMarkers();
+      _l2BuildMarkers();
+      _l2RenderPanel();
+
+      GameEvents.on("blockPlaced",  _l2OnPlaced);
+      GameEvents.on("blockRemoved", _l2OnRemoved);
+
+      // ---- hand control back to the player ----
+      const canvas = document.getElementById("renderCanvas");
+      if (canvas) canvas.requestPointerLock();
+
+      // Safety net: if the browser refused the lock, show the resume prompt
+      setTimeout(() => {
+        if (document.pointerLockElement !== canvas) {
+          const p = document.getElementById("paused-overlay");
+          if (p) p.classList.add("visible");
+        }
+      }, 400);
+
+      console.log("[lesson2] Started — build the walls");
+    }
+
+    function _l2BuildMarkers() {
+      LESSON2.POSITIONS.forEach(p => {
+        const m = BABYLON.MeshBuilder.CreateBox(
+          "wall2_" + p.x + "_" + p.y + "_" + p.z,
+          { width: 1.01, height: 1.01, depth: 1.01 },
+          _playerScene
+        );
+        m.position.set(p.x, p.y, p.z);
+        m.isPickable = false;
+        const mat = new BABYLON.StandardMaterial("wall2_mat", _playerScene);
+        mat.diffuseColor  = new BABYLON.Color3(0.25, 0.65, 1.0);
+        mat.emissiveColor = new BABYLON.Color3(0.10, 0.35, 0.65);
+        mat.alpha         = 0.22;
+        m.material = mat;
+        _l2Markers.push(m);
+      });
+    }
+
+    function _l2ClearMarkers() {
+      _l2Markers.forEach(m => m.dispose());
+      _l2Markers = [];
+    }
+
+    function _l2RenderPanel() {
+      const panel = document.getElementById("task-panel");
+      if (!panel) return;
+      panel.innerHTML = `
+        <div style="font-size:11px; font-weight:700; letter-spacing:0.1em;
+          color:rgba(255,255,255,0.4); text-transform:uppercase;
+          margin-bottom:2px; padding-left:4px;">
+          🧱 Walls Lesson
         </div>
 
-        <!-- Buttons -->
-        <div style="display: flex; gap: 12px; justify-content: center;">
-          <button onclick="_restartLesson()" style="
-            padding: 12px 24px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            background: rgba(255,255,255,0.08);
-            color: #fff;
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.2s;
-          "
-          onmouseover="this.style.background='rgba(255,255,255,0.15)'"
-          onmouseout="this.style.background='rgba(255,255,255,0.08)'"
-          >🔄 Try Again</button>
-
-          <button onclick="_nextLesson(this)" style="
-            padding: 12px 28px;
-            font-size: 0.9rem;
-            font-weight: 700;
-            background: #2ecc71;
-            color: #0d1f0d;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.2s;
-          "
-          onmouseover="this.style.background='#27ae60'"
-          onmouseout="this.style.background='#2ecc71'"
-          >Next Lesson →</button>
+        <div class="task-card active" id="l2-task-0">
+          <div class="task-header">
+            <span class="task-icon">🧱</span>
+            <span>Raise the Walls</span>
+            <span class="task-status" id="l2-progress">0 / ${LESSON2.REQUIRED}</span>
+          </div>
+          <div class="task-body" style="display:block;">
+            Place <strong>${LESSON2.REQUIRED} blocks</strong> on the glowing blue
+            ghost squares to raise the walls of your house.<br/><br/>
+            <em>Walls sit directly on the foundation and carry the weight of the
+            floor and roof down into it. Each course must be level before the
+            next one goes on.</em><br/><br/>
+            Press <strong>4</strong> for Wood, then <strong>Right Click</strong>
+            the face of a block to place.
+          </div>
         </div>
-      </div>
-    `;
-
-    document.body.appendChild(screen);
-
-    // Release pointer lock so player can click the buttons
-    document.exitPointerLock();
-
-    console.log("[completion] Screen shown — time: " + timeStr + " stars: " + starCount);
-  }
-
-  function _restartLesson() {
-    // Simplest restart — just reload the page
-    location.reload();
-  }
-
-  function _nextLesson(btn) {
-    // Phase 4 Step 3 will add Lesson 2 here.
-    // For now show a coming soon message.
-    if (!btn) btn = document.querySelector('#completion-screen button:last-child');
-    if (!btn) return;
-    btn.textContent = "🚧 Coming Soon!";
-    btn.style.background = "#e8a020";
-    btn.style.color = "#1a0f00";
-    setTimeout(() => {
-      btn.textContent = "Next Lesson →";
-      btn.style.background = "#2ecc71";
-      btn.style.color = "#0d1f0d";
-    }, 2000);
-  }
-</script>
-<!-- highlight.js -->
-<script>
-  // ============================================================
-  // BLOCK HIGHLIGHT SYSTEM
-  // Draws a wireframe outline on whichever block the player
-  // is currently looking at. Updates every frame.
-  // ============================================================
-
-  let _highlightMesh = null;
-  let _highlightMat  = null;
-
-  function initHighlight(scene) {
-    // Create a slightly oversized box used as the outline
-    // We use wireframe mode so only the edges show
-    _highlightMesh = BABYLON.MeshBuilder.CreateBox(
-      "blockHighlight",
-      { size: 1.02 },
-      scene
-    );
-
-    _highlightMat = new BABYLON.StandardMaterial("highlightMat", scene);
-    _highlightMat.wireframe    = true;
-    _highlightMat.emissiveColor = new BABYLON.Color3(1, 0.85, 0.1); // warm yellow
-    _highlightMat.disableLighting = true;
-
-    _highlightMesh.material   = _highlightMat;
-    _highlightMesh.isPickable = false;   // raycast ignores it
-    _highlightMesh.setEnabled(false);    // hidden until player looks at a block
-
-    // Run every frame — check what the player is looking at
-    scene.onBeforeRenderObservable.add(_updateHighlight);
-
-    console.log("[highlight] Initialized");
-  }
-
-  function _updateHighlight() {
-    // Need camera and canvas to cast a ray
-    if (!_camera || !_playerCanvas) {
-      _highlightMesh.setEnabled(false);
-      return;
+      `;
     }
 
-    // Only show highlight when pointer is locked (in-game)
-    if (document.pointerLockElement !== _playerCanvas) {
-      _highlightMesh.setEnabled(false);
-      return;
+    function _l2UpdateProgress() {
+      const el = document.getElementById("l2-progress");
+      if (el) el.textContent = _l2Placed.size + " / " + LESSON2.REQUIRED;
     }
 
-    // Cast ray from screen center forward
-    const ray = _playerScene.createPickingRay(
-      _playerCanvas.width  / 2,
-      _playerCanvas.height / 2,
-      BABYLON.Matrix.Identity(),
-      _camera
-    );
-
-    const hit = _playerScene.pickWithRay(
-      ray,
-      (m) => m.isPickable && m.metadata && m.metadata.blockId
-    );
-
-    if (hit && hit.hit && hit.distance <= PLAYER_CONFIG.REACH) {
-      // Snap highlight box exactly onto the hit block's grid position
-      const { gridX, gridY, gridZ } = hit.pickedMesh.metadata;
-      _highlightMesh.position.set(gridX, gridY, gridZ);
-      _highlightMesh.setEnabled(true);
-    } else {
-      _highlightMesh.setEnabled(false);
+    function _l2OnPlaced({ x, y, z }) {
+      if (taskState.lesson !== 2 || _l2Done) return;
+      const rx = Math.round(x), ry = Math.round(y), rz = Math.round(z);
+      const ok = LESSON2.POSITIONS.some(p =>
+        p.x === rx && p.y === ry && p.z === rz);
+      if (!ok) return;
+      _l2Placed.add(rx + "," + ry + "," + rz);
+      _l2UpdateProgress();
+      if (_l2Placed.size >= LESSON2.REQUIRED) _l2Finish();
     }
-  }
-</script>
+
+    function _l2OnRemoved({ x, y, z }) {
+      if (taskState.lesson !== 2 || _l2Done) return;
+      _l2Placed.delete(Math.round(x) + "," + Math.round(y) + "," + Math.round(z));
+      _l2UpdateProgress();
+    }
+
+    function _l2Finish() {
+      _l2Done = true;
+
+      const card = document.getElementById("l2-task-0");
+      if (card) { card.classList.remove("active"); card.classList.add("completed"); }
+      const el = document.getElementById("l2-progress");
+      if (el) el.textContent = "✅";
+
+      _l2ClearMarkers();
+      window.__lessonComplete = true;
+
+      setTimeout(() => {
+        showCompletionScreen({
+          title:    "Lesson 2 Complete!",
+          subtitle: "Walls Lesson — BuildRight",
+          steps:    "2 / 2",
+          hasNext:  false,
+          learned: [
+            "Walls transfer roof and floor loads into the foundation",
+            "Each course of blocks must be level before the next goes on",
+            "Walls are only as straight as the foundation under them"
+          ]
+        });
+      }, 900);
+
+      console.log("[lesson2] Complete 🎉");
+    }
+  </script>
+
+  <!-- highlight.js -->
+  <script>
+    let _highlightMesh = null;
+    let _highlightMat  = null;
+
+    function initHighlight(scene) {
+      _highlightMesh = BABYLON.MeshBuilder.CreateBox(
+        "blockHighlight",
+        { size: 1.02 },
+        scene
+      );
+
+      _highlightMat = new BABYLON.StandardMaterial("highlightMat", scene);
+      _highlightMat.wireframe       = true;
+      _highlightMat.emissiveColor   = new BABYLON.Color3(1, 0.85, 0.1);
+      _highlightMat.disableLighting = true;
+
+      _highlightMesh.material   = _highlightMat;
+      _highlightMesh.isPickable = false;
+      _highlightMesh.setEnabled(false);
+
+      scene.onBeforeRenderObservable.add(_updateHighlight);
+      console.log("[highlight] Initialized");
+    }
+
+    function _updateHighlight() {
+      if (!_camera || !_playerCanvas) {
+        _highlightMesh.setEnabled(false);
+        return;
+      }
+
+      if (document.pointerLockElement !== _playerCanvas) {
+        _highlightMesh.setEnabled(false);
+        return;
+      }
+
+      const ray = _playerScene.createPickingRay(
+        _playerCanvas.width  / 2,
+        _playerCanvas.height / 2,
+        BABYLON.Matrix.Identity(),
+        _camera
+      );
+
+      const hit = _playerScene.pickWithRay(
+        ray,
+        (m) => m.isPickable && m.metadata && m.metadata.blockId
+      );
+
+      if (hit && hit.hit && hit.distance <= PLAYER_CONFIG.REACH) {
+        const { gridX, gridY, gridZ } = hit.pickedMesh.metadata;
+        _highlightMesh.position.set(gridX, gridY, gridZ);
+        _highlightMesh.setEnabled(true);
+      } else {
+        _highlightMesh.setEnabled(false);
+      }
+    }
+  </script>
+
   <!-- ui.js -->
   <script>
     let _gameStarted = false;
@@ -1448,14 +1562,12 @@
         if (document.pointerLockElement === canvas) {
           pausedOverlay.classList.remove("visible");
         } else if (_gameStarted && !window.__lessonComplete) {
-          // Don't show "PAUSED" once the lesson is finished
           pausedOverlay.classList.add("visible");
         }
       });
 
       pausedOverlay.addEventListener("click", () => canvas.requestPointerLock());
 
-      // ---- FIX #4: Add B key listener ----
       window.addEventListener("keydown", (e) => {
         if (e.code === "KeyB") toggleBook();
       });
@@ -1507,24 +1619,23 @@
         sun.specular  = new BABYLON.Color3(0.2, 0.2, 0.15);
         sun.intensity = 0.75;
 
-       initBlockMaterials(scene);
-initWorld(scene);
-initPlayer(scene, canvas);
-initHighlight(scene);
-initCompletion();     // ← starts the lesson timer
+        initBlockMaterials(scene);
+        initWorld(scene);
+        initPlayer(scene, canvas);
+        initHighlight(scene);
+        initCompletion();     // starts the lesson timer
 
-// ---- FIX #3: Initialize book and task systems ----
-initBook();
-initTasks(scene);
+        initBook();
+        initTasks(scene);
 
-initUI(canvas);
+        initUI(canvas);
 
         updateHotbar(0);
 
         engine.runRenderLoop(() => scene.render());
         window.addEventListener("resize", () => engine.resize());
 
-        console.log("[main] BuildRight Phase 1+2 running ✅");
+        console.log("[main] BuildRight running ✅");
 
       } catch (err) {
         document.body.innerHTML = `
