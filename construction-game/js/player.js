@@ -209,8 +209,8 @@ function _update() {
 }
 
 function _findGroundBelow(x, fromY, z) {
-  for (let y = Math.floor(fromY); y >= -2; y--) {
+  for (let y = Math.floor(fromY); y >= WORLD_CONFIG.UNDERGROUND; y--) {
     if (getBlock(x, y, z)) return y;
   }
-  return -2;
+  return WORLD_CONFIG.UNDERGROUND - 1;
 }

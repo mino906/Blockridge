@@ -17,7 +17,7 @@ const blockMap = new Map();
 let _scene = null;
 
 // The 6 face directions — used for neighbor checks
-const _DIRS = [
+const _DIRTS = [
   [ 1, 0, 0], [-1, 0, 0],
   [ 0, 1, 0], [ 0,-1, 0],
   [ 0, 0, 1], [ 0, 0,-1],
@@ -66,7 +66,7 @@ function _createMesh(x, y, z, blockId) {
 // ── Exposure Check ──────────────────────────────────────────
 // Returns true if at least one neighbor is air (no block data)
 function _isExposed(x, y, z) {
-  return _DIRS.some(([dx, dy, dz]) =>
+  return _DIRTS.some(([dx, dy, dz]) =>
     !blockMap.has(toKey(x + dx, y + dy, z + dz))
   );
 }
@@ -100,7 +100,7 @@ function placeBlock(x, y, z, blockId) {
   GameEvents.emit("blockPlaced", { x, y, z, blockId });
 
   // Neighbors may now be fully enclosed — remove their meshes
-  _DIRS.forEach(([dx, dy, dz]) => {
+  _DIRTS.forEach(([dx, dy, dz]) => {
     const nx = x + dx, ny = y + dy, nz = z + dz;
     const nData = blockMap.get(toKey(nx, ny, nz));
     if (nData && nData.mesh && !_isExposed(nx, ny, nz)) {
@@ -130,7 +130,7 @@ function removeBlock(x, y, z) {
   GameEvents.emit("blockRemoved", { x, y, z });
 
   // Reveal neighbors that were hidden by this block
-  _DIRS.forEach(([dx, dy, dz]) => {
+  _DIRTS.forEach(([dx, dy, dz]) => {
     const nx = x + dx, ny = y + dy, nz = z + dz;
     const nData = blockMap.get(toKey(nx, ny, nz));
     if (nData && !nData.mesh) {
