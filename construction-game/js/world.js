@@ -50,6 +50,7 @@ function spawnBlock(x, y, z, blockId) {
     { size: 0.99 },
     _scene
   );
+  
 
   mesh.position.set(x, y, z);
   mesh.material = getBlockMaterial(blockId);
@@ -114,7 +115,13 @@ function initWorld(scene) {
       }
 
       // Bottom layer: stone at y=0
+      // Bottom layer: stone at y=0
       spawnBlock(x, 0, z, "stone");
+
+      // 50 underground layers below y=0
+      for (let y = -1; y >= -50; y--) {
+        spawnBlock(x, y, z, "stone");
+      }
     }
   }
 

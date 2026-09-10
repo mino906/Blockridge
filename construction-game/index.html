@@ -52,11 +52,11 @@
       left: 50%;
       transform: translateX(-50%);
       display: flex;
-      gap: 6px;
+      gap: 5px;
     }
 
     .hotbar-slot {
-      width: 54px;
+      width: 52px;
       height: 54px;
       background: rgba(0,0,0,0.55);
       border: 2px solid rgba(255,255,255,0.2);
@@ -65,23 +65,26 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
-      gap: 2px;
+      font-size: 20px;
+      gap: 1px;
       backdrop-filter: blur(6px);
       transition: border-color 0.15s, background 0.15s;
     }
 
     .hotbar-slot .slot-label {
-      font-size: 9px;
-      font-weight: 600;
-      color: rgba(255,255,255,0.5);
-      letter-spacing: 0.03em;
+      font-size: 8px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.55);
+      letter-spacing: 0.02em;
       text-transform: uppercase;
+      line-height: 1.05;
+      text-align: center;
     }
 
     .hotbar-slot.active {
       border-color: #e8a020;
       background: rgba(232,160,32,0.18);
+      transform: translateY(-4px);
     }
 
     #controls-hint {
@@ -163,9 +166,9 @@
       top: 50%;
       transform: translateY(-50%);
       z-index: 30;
-      width: 280px;
+      width: 292px;
       pointer-events: auto;
-      background: rgba(0,0,0,0.65);
+      background: rgba(0,0,0,0.68);
       backdrop-filter: blur(10px);
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.08);
@@ -173,7 +176,7 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      max-height: 70vh;
+      max-height: 74vh;
       overflow-y: auto;
       font-size: 13px;
       color: #ddd;
@@ -185,40 +188,28 @@
       background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.06);
       border-radius: 8px;
-      padding: 6px 10px;
-      cursor: pointer;
+      padding: 8px 10px;
       transition: background 0.15s, border-color 0.15s;
     }
     .task-card.active {
       border-color: #e8a020;
       background: rgba(232,160,32,0.08);
     }
-    .task-card.completed {
-      border-color: #2ecc71;
-      background: rgba(46,204,113,0.06);
-      opacity: 0.8;
-    }
-    .task-card.locked {
-      opacity: 0.4;
-      pointer-events: none;
-    }
+    .task-card.locked { opacity: 0.45; }
     .task-header {
       display: flex;
       align-items: center;
       gap: 8px;
+      font-weight: 600;
     }
     .task-icon { font-size: 16px; }
-    .task-status { margin-left: auto; font-size: 14px; }
     .task-body {
-      display: none;
-      margin-top: 6px;
+      margin-top: 7px;
       font-size: 12px;
-      line-height: 1.5;
+      line-height: 1.55;
       color: #bbb;
-      padding-left: 4px;
+      padding-left: 2px;
     }
-    .task-card.active .task-body,
-    .task-card.completed .task-body { display: block; }
 
     /* ── Book Overlay ── */
     #book-overlay {
@@ -238,8 +229,8 @@
       background: #fef6e8;
       color: #2d1b0e;
       width: 90%;
-      max-width: 560px;
-      max-height: 80vh;
+      max-width: 620px;
+      max-height: 82vh;
       overflow-y: auto;
       border-radius: 16px;
       padding: 30px 34px;
@@ -249,7 +240,7 @@
       line-height: 1.7;
     }
     #book h2 { margin-top: 0; font-size: 1.8rem; }
-    #book h3 { margin-top: 1.2rem; font-size: 1.1rem; }
+    #book h3 { margin-top: 1.2rem; font-size: 1.05rem; }
     #book p  { margin: 0.6rem 0; }
     #book ul { padding-left: 1.4rem; }
     #book li { margin: 0.3rem 0; }
@@ -287,6 +278,7 @@
       from { opacity: 0; transform: scale(0.95); }
       to   { opacity: 1; transform: scale(1); }
     }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
   </style>
 </head>
 <body>
@@ -295,125 +287,22 @@
 
   <div id="hud">
     <div id="crosshair">+</div>
-
-    <!-- Hotbar: 6 slots -->
-    <div id="hotbar">
-      <div class="hotbar-slot active" id="slot-0"><span id="slot-icon-0">🟫</span><span class="slot-label">1 Dirt</span></div>
-      <div class="hotbar-slot"        id="slot-1"><span id="slot-icon-1">⬜</span><span class="slot-label">2 Stone</span></div>
-      <div class="hotbar-slot"        id="slot-2"><span id="slot-icon-2">🔲</span><span class="slot-label">3 Concrete</span></div>
-      <div class="hotbar-slot"        id="slot-3"><span id="slot-icon-3">🪵</span><span class="slot-label">4 Wood</span></div>
-      <div class="hotbar-slot"        id="slot-4"><span id="slot-icon-4">🟡</span><span class="slot-label">5 Sand</span></div>
-      <div class="hotbar-slot"        id="slot-5"><span id="slot-icon-5">🩶</span><span class="slot-label">6 Iron</span></div>
-    </div>
+    <div id="hotbar"></div>
 
     <div id="controls-hint">
       <strong>Controls</strong><br/>
       WASD — Move &nbsp;|&nbsp; Mouse — Look<br/>
       Space — Jump &nbsp;|&nbsp; Shift — Sprint<br/>
       Left Click — Remove &nbsp;|&nbsp; Right Click — Place<br/>
-      1–6 — Switch Block &nbsp;|&nbsp; ESC — Pause<br/>
+      1–9, 0 — Switch Block &nbsp;|&nbsp; ESC — Pause<br/>
       B — Open Instruction Book
     </div>
   </div>
 
   <div id="paused-overlay">⏸ PAUSED — Click to Resume</div>
 
-  <!-- Task Checklist Panel -->
-  <div id="task-panel">
-    <div style="font-size:11px; font-weight:700; letter-spacing:0.1em;
-      color:rgba(255,255,255,0.4); text-transform:uppercase; margin-bottom:2px; padding-left:4px;">
-      📋 Foundation Lesson
-    </div>
-
-    <!-- Step 1 -->
-    <div class="task-card active" id="task-0" onclick="toggleCard(0)">
-      <div class="task-header">
-        <span class="task-icon">📖</span>
-        <span>Read the Foundation Guide</span>
-        <span class="task-status" id="task-status-0">○</span>
-      </div>
-      <div class="task-body">
-        Open your instruction book to learn what a foundation is
-        and why it matters before you start building.<br/><br/>
-        <strong>Press B</strong> to open the book.
-      </div>
-    </div>
-
-    <!-- Step 2 -->
-    <div class="task-card locked" id="task-1" onclick="toggleCard(1)">
-      <div class="task-header">
-        <span class="task-icon">📍</span>
-        <span>Find the Build Zone</span>
-        <span class="task-status" id="task-status-1">○</span>
-      </div>
-      <div class="task-body">
-        Walk to the <strong>orange marked area</strong> on the ground.
-        That is where your foundation will be built.<br/><br/>
-        It is marked 5 blocks north of your starting position.
-      </div>
-    </div>
-
-    <!-- Step 3 -->
-    <div class="task-card locked" id="task-2" onclick="toggleCard(2)">
-      <div class="task-header">
-        <span class="task-icon">⛏️</span>
-        <span>Dig the Foundation Trench</span>
-        <span class="task-status" id="task-status-2">○</span>
-      </div>
-      <div class="task-body">
-        Remove the <strong>3 grass blocks</strong> inside the build zone
-        to expose the ground below.<br/><br/>
-        <em>Real foundations are dug below the frost line
-        so the ground movement doesn't crack the structure.</em><br/><br/>
-        <strong>Left Click</strong> blocks to remove them.
-      </div>
-    </div>
-
-    <!-- Step 4 -->
-    <div class="task-card locked" id="task-3" onclick="toggleCard(3)">
-      <div class="task-header">
-        <span class="task-icon">🔲</span>
-        <span>Pour the Concrete</span>
-        <span class="task-status" id="task-status-3">○</span>
-      </div>
-      <div class="task-body">
-        Place <strong>3 concrete blocks</strong> to fill the trench
-        you just dug.<br/><br/>
-        <em>Concrete is used because it is strong under compression —
-        it can hold the weight of the entire house above it.</em><br/><br/>
-        Press <strong>3</strong> to select Concrete, then
-        <strong>Right Click</strong> to place.
-      </div>
-    </div>
-
-    <!-- Step 5 -->
-    <div class="task-card locked" id="task-4" onclick="toggleCard(4)">
-      <div class="task-header">
-        <span class="task-icon">🩶</span>
-        <span>Lay the Rebar</span>
-        <span class="task-status" id="task-status-4">○</span>
-      </div>
-      <div class="task-body">
-        Place <strong>3 iron/rebar blocks</strong> on top of the concrete.<br/><br/>
-        <em>Rebar (steel reinforcement bars) are embedded in concrete
-        to handle tension forces. Concrete alone cracks under tension —
-        rebar prevents this. Together they form reinforced concrete.</em><br/><br/>
-        Press <strong>6</strong> to select Iron/Rebar, then
-        <strong>Right Click</strong> to place.
-      </div>
-    </div>
-
-    <!-- Completion card -->
-    <div id="task-complete" style="display:none; background:rgba(46,204,113,0.2);
-      border:1.5px solid #2ecc71; border-radius:10px; padding:12px 14px;
-      font-size:13px; font-weight:700; color:#2ecc71; text-align:center;
-      backdrop-filter:blur(8px);">
-      ✅ Foundation Complete!<br/>
-      <span style="font-size:11px; font-weight:400; color:rgba(255,255,255,0.6);">
-        Great work! You've built a reinforced concrete foundation.
-      </span>
-    </div>
-  </div>
+  <!-- Task Checklist Panel (filled by tasks.js) -->
+  <div id="task-panel"></div>
 
   <!-- Book hint -->
   <div id="book-hint">📖 Press <strong>B</strong> to open the Instruction Book</div>
@@ -424,7 +313,7 @@
       <button id="book-close" onclick="closeBook()">✕</button>
 
       <h2>📖 The Construction Guide</h2>
-      <p style="font-size:0.8rem; color:#8a5a2a;">BuildRight — Foundation Lesson</p>
+      <p style="font-size:0.8rem; color:#8a5a2a;">BuildRight — 52 Lesson House Course</p>
 
       <h3>What is a Foundation?</h3>
       <p>
@@ -449,14 +338,24 @@
         <li><strong>Iron / Rebar</strong> — steel bars embedded in concrete.
           Concrete is brittle under tension (pulling forces).
           Rebar handles tension so the foundation doesn't crack.</li>
+        <li><strong>Wood</strong> — light, strong in tension and easy to work.
+          Used for walls and framing.</li>
+        <li><strong>Brick</strong> — fireproof and long-lasting. Great for chimneys.</li>
+        <li><strong>Roof Tile</strong> — sheds water. Roofs are built in layers
+          so each course overlaps the one below.</li>
+        <li><strong>Glass</strong> — lets in light without letting out heat.</li>
       </ul>
 
-      <h3>Your Task — Step by Step</h3>
+      <h3>Your Course — 52 Lessons</h3>
       <ul>
-        <li>1. Walk to the <strong>orange marked zone</strong> on the ground</li>
-        <li>2. Dig out the 3 grass blocks in the zone</li>
-        <li>3. Fill the trench with 3 <strong>concrete</strong> blocks</li>
-        <li>4. Place 3 <strong>iron/rebar</strong> blocks on top</li>
+        <li>1–2 &nbsp; Read the guide · Find the build zone</li>
+        <li>3–5 &nbsp; Dig the foundation trenches</li>
+        <li>6–9 &nbsp; Pour the footing · Lay the rebar</li>
+        <li>10–21 &nbsp; Raise the four walls, course by course</li>
+        <li>22–25 &nbsp; Install the door and windows</li>
+        <li>26–34 &nbsp; Build the roof and chimney</li>
+        <li>35–43 &nbsp; Fit out the interior</li>
+        <li>44–52 &nbsp; Landscape and finish the exterior</li>
       </ul>
 
       <p style="margin-top:16px; font-style:italic; color:#8a5a2a; font-size:0.82rem;">
@@ -478,16 +377,21 @@
   <!-- blocks.js -->
   <script>
     const BLOCK_TYPES = {
-      dirt:     { id:"dirt",     name:"Dirt",       emoji:"🟫" },
-      grass:    { id:"grass",    name:"Grass",       emoji:"🟩" },
-      stone:    { id:"stone",    name:"Stone",       emoji:"⬜" },
-      concrete: { id:"concrete", name:"Concrete",    emoji:"🔲" },
-      wood:     { id:"wood",     name:"Wood Plank",  emoji:"🪵" },
-      sand:     { id:"sand",     name:"Sand",        emoji:"🟡" },
-      iron:     { id:"iron",     name:"Iron/Rebar",  emoji:"🩶" },
+      dirt:     { id:"dirt",     name:"Dirt",       short:"Dirt",     emoji:"🟫" },
+      grass:    { id:"grass",    name:"Grass",      short:"Grass",    emoji:"🟩" },
+      stone:    { id:"stone",    name:"Stone",      short:"Stone",    emoji:"⬜" },
+      concrete: { id:"concrete", name:"Concrete",   short:"Concrete", emoji:"🔲" },
+      wood:     { id:"wood",     name:"Wood Plank", short:"Wood",     emoji:"🪵" },
+      sand:     { id:"sand",     name:"Sand",       short:"Sand",     emoji:"🟡" },
+      iron:     { id:"iron",     name:"Iron/Rebar", short:"Rebar",    emoji:"🩶" },
+      glass:    { id:"glass",    name:"Glass",      short:"Glass",    emoji:"🪟" },
+      brick:    { id:"brick",    name:"Brick",      short:"Brick",    emoji:"🧱" },
+      roof:     { id:"roof",     name:"Roof Tile",  short:"Roof",     emoji:"🟥" },
+      door:     { id:"door",     name:"Door",       short:"Door",     emoji:"🚪" },
     };
 
-    const PHASE_1_HOTBAR = ["dirt", "stone", "concrete", "wood", "sand", "iron"];
+    // 10 hotbar slots — keys 1..9 and 0
+    const HOTBAR = ["dirt","stone","concrete","wood","sand","iron","glass","brick","roof","door"];
 
     const blockMaterials = {};
     const TEX = 16;
@@ -608,6 +512,69 @@
       [[2,2],[6,6],[10,2],[2,10],[10,10],[6,13]].forEach(p => ctx.fillRect(p[0],p[1],2,2));
     }
 
+    function _drawGlass(ctx, s) {
+      for (let y = 0; y < s; y++)
+        for (let x = 0; x < s; x++) {
+          const b = _rnd(205,18);
+          ctx.fillStyle = "rgb("+Math.floor(b*0.76)+","+Math.floor(b*0.90)+","+b+")";
+          ctx.fillRect(x, y, 1, 1);
+        }
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.fillRect(3, 2, 5, 1);
+      ctx.fillRect(3, 3, 1, 4);
+      ctx.fillStyle = "rgba(255,255,255,0.4)";
+      ctx.fillRect(10, 10, 1, 4);
+      ctx.fillStyle = "rgba(215,235,255,0.95)";
+      ctx.fillRect(0, 0, s, 1);   ctx.fillRect(0, s-1, s, 1);
+      ctx.fillRect(0, 0, 1, s);   ctx.fillRect(s-1, 0, 1, s);
+    }
+
+    function _drawBrick(ctx, s) {
+      ctx.fillStyle = "rgb(205,198,186)";
+      ctx.fillRect(0, 0, s, s);
+      const bh = 4, bw = 8;
+      for (let row = 0; row < s / bh; row++) {
+        const off = (row % 2) ? -bw / 2 : 0;
+        for (let col = -1; col <= s / bw; col++) {
+          ctx.fillStyle = "rgb("+_rnd(158,26)+","+_rnd(72,18)+","+_rnd(58,14)+")";
+          ctx.fillRect(col*bw + off, row*bh, bw - 1, bh - 1);
+        }
+      }
+    }
+
+    function _drawRoof(ctx, s) {
+      for (let y = 0; y < s; y++)
+        for (let x = 0; x < s; x++) {
+          ctx.fillStyle = "rgb("+_rnd(135,24)+","+_rnd(52,14)+","+_rnd(42,12)+")";
+          ctx.fillRect(x, y, 1, 1);
+        }
+      for (let y = 3; y < s; y += 4) {
+        ctx.fillStyle = "rgba(50,15,10,0.6)";
+        ctx.fillRect(0, y, s, 1);
+      }
+      ctx.fillStyle = "rgba(50,15,10,0.35)";
+      for (let y = 0; y < s; y += 4) {
+        ctx.fillRect(7, y, 1, 4);
+        ctx.fillRect(15, y, 1, 4);
+      }
+    }
+
+    function _drawDoor(ctx, s) {
+      for (let y = 0; y < s; y++)
+        for (let x = 0; x < s; x++) {
+          ctx.fillStyle = "rgb("+_rnd(118,18)+","+_rnd(74,14)+","+_rnd(34,10)+")";
+          ctx.fillRect(x, y, 1, 1);
+        }
+      ctx.fillStyle = "rgba(45,25,8,0.75)";
+      ctx.fillRect(3, 2, 1, 12);
+      ctx.fillRect(12, 2, 1, 12);
+      ctx.fillRect(3, 2, 10, 1);
+      ctx.fillRect(3, 13, 10, 1);
+      ctx.fillRect(3, 7, 10, 1);
+      ctx.fillStyle = "rgba(248,214,120,1)";
+      ctx.fillRect(11, 9, 2, 2);
+    }
+
     function initBlockMaterials(scene) {
       blockMaterials["dirt"]     = _makeMat("mat_dirt",     _drawDirt,     scene);
       blockMaterials["stone"]    = _makeMat("mat_stone",    _drawStone,    scene);
@@ -615,6 +582,18 @@
       blockMaterials["wood"]     = _makeMat("mat_wood",     _drawWood,     scene);
       blockMaterials["sand"]     = _makeMat("mat_sand",     _drawSand,     scene);
       blockMaterials["iron"]     = _makeMat("mat_iron",     _drawIron,     scene);
+      blockMaterials["brick"]    = _makeMat("mat_brick",    _drawBrick,    scene);
+      blockMaterials["roof"]     = _makeMat("mat_roof",     _drawRoof,     scene);
+      blockMaterials["door"]     = _makeMat("mat_door",     _drawDoor,     scene);
+
+      // Glass — semi transparent
+      const glass = new BABYLON.StandardMaterial("mat_glass", scene);
+      glass.diffuseTexture   = _makeTex("mat_glass_tex", _drawGlass, scene);
+      glass.emissiveColor    = new BABYLON.Color3(0.10, 0.16, 0.22);
+      glass.specularColor    = new BABYLON.Color3(0.55, 0.55, 0.6);
+      glass.specularPower    = 64;
+      glass.alpha            = 0.62;
+      blockMaterials["glass"] = glass;
 
       const matTop    = _makeMat("mat_grass_top",    _drawGrassTop,  scene);
       const matSide   = _makeMat("mat_grass_side",   _drawGrassSide, scene);
@@ -634,15 +613,21 @@
   <!-- world.js -->
   <script>
     const WORLD_CONFIG = {
-      SIZE: 32,
+      SIZE: 24,          // 24 x 24 columns (kept light enough for 50 deep layers)
+      DEEP_LAYERS: 50,   // 50 solid stone layers below y = 0
     };
 
-    const blockMap = new Map();
+    const blockMap  = new Map();   // "x,y,z" -> mesh  (player-editable blocks)
+    const deepBlocks = new Set();  // "x,y,z" keys of the 50 bedrock layers
+
     let _worldScene = null;
+    let _deepMesh   = null;
 
     function toKey(x, y, z) {
       return Math.round(x) + "," + Math.round(y) + "," + Math.round(z);
     }
+
+    /* ---------------- Surface / editable blocks ---------------- */
 
     function spawnBlock(x, y, z, blockId) {
       const key = toKey(x, y, z);
@@ -659,9 +644,9 @@
 
       const mesh = BABYLON.MeshBuilder.CreateBox("block_" + key, options, _worldScene);
       mesh.position.set(x, y, z);
-      mesh.material    = mat;
-      mesh.isPickable  = true;
-      mesh.metadata    = { blockId, gridX: x, gridY: y, gridZ: z };
+      mesh.material   = mat;
+      mesh.isPickable = true;
+      mesh.metadata   = { blockId, gridX: x, gridY: y, gridZ: z };
 
       if (isMulti) {
         mesh.subMeshes = [];
@@ -670,7 +655,6 @@
       }
 
       blockMap.set(key, mesh);
-      // ---- FIRE EVENT for tasks ----
       if (typeof GameEvents !== 'undefined') {
         GameEvents.emit('blockPlaced', { x, y, z, blockId });
       }
@@ -679,17 +663,22 @@
 
     function placeBlock(x, y, z, blockId) {
       if (blockMap.has(toKey(x, y, z))) return false;
+      if (deepBlocks.has(toKey(x, y, z))) return false;
       spawnBlock(x, y, z, blockId);
       return true;
     }
 
     function removeBlock(x, y, z) {
-      const key  = toKey(x, y, z);
+      const key = toKey(x, y, z);
+
+      // The 50 deep layers are bedrock — they can never be removed.
+      if (deepBlocks.has(key)) return false;
+
       const mesh = blockMap.get(key);
       if (!mesh) return false;
       mesh.dispose();
       blockMap.delete(key);
-      // ---- FIRE EVENT for tasks ----
+
       if (typeof GameEvents !== 'undefined') {
         GameEvents.emit('blockRemoved', { x, y, z });
       }
@@ -699,6 +688,64 @@
     function getBlock(x, y, z) {
       return blockMap.get(toKey(x, y, z)) || null;
     }
+
+    /** Returns the block id at a position, including the deep bedrock layers. */
+    function getBlockId(x, y, z) {
+      const key = toKey(x, y, z);
+      const mesh = blockMap.get(key);
+      if (mesh) return mesh.metadata.blockId;
+      if (deepBlocks.has(key)) return "stone";
+      return null;
+    }
+
+    /** Doors are walk-through; everything else is solid. */
+    function isSolidBlock(id) {
+      return id !== null && id !== "door";
+    }
+
+    /* ---------------- 50 deep bedrock layers (thin instances) ---------------- */
+
+    function initDeepLayers(scene) {
+      const half = Math.floor(WORLD_CONFIG.SIZE / 1.5);
+      const list = [];
+
+      for (let y = -1; y >= -WORLD_CONFIG.DEEP_LAYERS; y--) {
+        for (let x = -half; x < half; x++) {
+          for (let z = -half; z < half; z++) {
+            list.push([x, y, z]);
+          }
+        }
+      }
+
+      const n = list.length;
+
+      // One base mesh, one draw call — the whole bedrock volume.
+      const base = BABYLON.MeshBuilder.CreateBox("deepBedrock", { size: 0.99 }, scene);
+      base.material   = getBlockMaterial("stone");
+      base.isPickable = false;          // bedrock is not diggable
+      base.metadata   = { blockId: "stone", bedrock: true };
+
+      const mats = new Float32Array(n * 16);
+      for (let i = 0; i < n; i++) {
+        const [x, y, z] = list[i];
+        const o = i * 16;
+        mats[o]    = 1; mats[o+1]  = 0; mats[o+2]  = 0; mats[o+3]  = 0;
+        mats[o+4]  = 0; mats[o+5]  = 1; mats[o+6]  = 0; mats[o+7]  = 0;
+        mats[o+8]  = 0; mats[o+9]  = 0; mats[o+10] = 1; mats[o+11] = 0;
+        mats[o+12] = x; mats[o+13] = y; mats[o+14] = z; mats[o+15] = 1;
+
+        deepBlocks.add(toKey(x, y, z));
+      }
+
+      base.thinInstanceSetBuffer("matrix", mats, 16);
+      base.alwaysSelectAsActiveMesh = true;   // thin instances aren't auto-culled
+      _deepMesh = base;
+
+      console.log("[world] Deep bedrock: " + n + " blocks across " +
+                  WORLD_CONFIG.DEEP_LAYERS + " layers");
+    }
+
+    /* ---------------- World generation ---------------- */
 
     function initWorld(scene) {
       _worldScene = scene;
@@ -710,7 +757,10 @@
           spawnBlock(x, 0, z, "stone");
         }
       }
-      console.log("[world] Flat world generated: " + blockMap.size + " blocks");
+
+      initDeepLayers(scene);
+
+      console.log("[world] Flat world generated: " + blockMap.size + " surface blocks");
     }
   </script>
 
@@ -723,7 +773,7 @@
       GRAVITY:      0.015,
       EYE_HEIGHT:   1.7,
       REACH:        6,
-      FLOOR_OFFSET: 0.5,
+      FLOOR_OFFSET: 0.0,
     };
 
     let _camera           = null;
@@ -735,7 +785,7 @@
     let _selectedBlockId  = "dirt";
     let _selectedSlot     = 0;
     let _lastActionTime   = 0;
-    const ACTION_COOLDOWN = 220;
+    const ACTION_COOLDOWN = 200;
     let _yaw   = 0;
     let _pitch = 0;
     const PITCH_LIMIT       = Math.PI / 2.1;
@@ -747,7 +797,7 @@
 
       _camera = new BABYLON.UniversalCamera(
         "playerCamera",
-        new BABYLON.Vector3(0, PLAYER_CONFIG.EYE_HEIGHT + 2, -5),
+        new BABYLON.Vector3(0, PLAYER_CONFIG.EYE_HEIGHT + 2, -6),
         scene
       );
       _camera.minZ = 0.1;
@@ -757,7 +807,8 @@
       window.addEventListener("keydown", (e) => {
         _keys.add(e.code);
         const digitMap = {
-          Digit1:0, Digit2:1, Digit3:2, Digit4:3, Digit5:4, Digit6:5
+          Digit1:0, Digit2:1, Digit3:2, Digit4:3, Digit5:4,
+          Digit6:5, Digit7:6, Digit8:7, Digit9:8, Digit0:9
         };
         if (e.code in digitMap) _selectSlot(digitMap[e.code]);
       });
@@ -812,21 +863,51 @@
         const bx = gridX + Math.round(n.x);
         const by = gridY + Math.round(n.y);
         const bz = gridZ + Math.round(n.z);
+
+        // Don't let the player seal themselves inside a block.
         const px = Math.round(_camera.position.x);
         const pz = Math.round(_camera.position.z);
         const py = Math.round(_camera.position.y - PLAYER_CONFIG.EYE_HEIGHT);
-        if (bx === px && bz === pz && (by === py || by === py + 1)) return;
+        if (bx === px && bz === pz && (by === py || by === py + 1 || by === py + 2)) return;
+
         placeBlock(bx, by, bz, _selectedBlockId);
       }
     }
 
     function _selectSlot(index) {
-      const blockId = PHASE_1_HOTBAR[index];
+      const blockId = HOTBAR[index];
       if (!blockId) return;
       _selectedSlot    = index;
       _selectedBlockId = blockId;
       updateHotbar(index);
     }
+
+    /* ---------------- Collision helpers ---------------- */
+
+    function _blockedAt(px, py, pz) {
+      const bx = Math.round(px);
+      const bz = Math.round(pz);
+      const y1 = Math.round(py - 0.7);
+      const y2 = Math.round(py - 1.4);
+      return isSolidBlock(getBlockId(bx, y1, bz)) ||
+             isSolidBlock(getBlockId(bx, y2, bz));
+    }
+
+    /** Allows a one-block auto step-up so doorways and kerbs feel natural. */
+    function _canStandAt(px, py, pz) {
+      if (!_blockedAt(px, py, pz)) return true;
+      if (!_blockedAt(px, py + 1, pz)) return true;
+      return false;
+    }
+
+    function _findGround(x, fromY, z) {
+      for (let y = Math.floor(fromY); y >= -WORLD_CONFIG.DEEP_LAYERS; y--) {
+        if (isSolidBlock(getBlockId(x, y, z))) return y;
+      }
+      return -WORLD_CONFIG.DEEP_LAYERS;
+    }
+
+    /* ---------------- Per-frame update ---------------- */
 
     function _playerUpdate() {
       if (!_camera) return;
@@ -845,14 +926,22 @@
 
       if (move.length() > 0) {
         move.normalize().scaleInPlace(speed);
-        pos.addInPlace(move);
+
+        // If the player is already stuck, let them walk out freely.
+        const stuck = _blockedAt(pos.x, pos.y, pos.z);
+
+        const tryX = pos.x + move.x;
+        const tryZ = pos.z + move.z;
+
+        if (stuck || _canStandAt(tryX, pos.y, pos.z)) pos.x = tryX;
+        if (stuck || _canStandAt(pos.x, pos.y, tryZ)) pos.z = tryZ;
       }
 
       _verticalVelocity -= PLAYER_CONFIG.GRAVITY;
       pos.y += _verticalVelocity;
 
       const groundY   = _findGround(Math.round(pos.x), pos.y, Math.round(pos.z));
-      const standingY = groundY + 1 + PLAYER_CONFIG.EYE_HEIGHT + PLAYER_CONFIG.FLOOR_OFFSET;
+      const standingY = groundY + 1 + PLAYER_CONFIG.EYE_HEIGHT;
 
       if (pos.y <= standingY) {
         pos.y             = standingY;
@@ -867,39 +956,596 @@
         _isOnGround       = false;
       }
 
-      const half = Math.floor(WORLD_CONFIG.SIZE / 2) - 1;
+      const half = Math.floor(WORLD_CONFIG.SIZE / 1.5) - 1;
       pos.x = Math.max(-half, Math.min(half, pos.x));
       pos.z = Math.max(-half, Math.min(half, pos.z));
     }
-
-    function _findGround(x, fromY, z) {
-      for (let y = Math.floor(fromY); y >= -2; y--) {
-        if (getBlock(x, y, z)) return y;
-      }
-      return -2;
-    }
   </script>
 
-  <!-- tasks.js -->
+  <!-- tasks.js — 52 LESSON COURSE -->
   <script>
-    // ============================================================
-    // TASK SYSTEM — Foundation Lesson
-    // ============================================================
+    /* ============================================================
+       THE HOUSE BLUEPRINT
+       ------------------------------------------------------------
+       Footprint : x = -2..2,  z = 2..6   (5 x 5)
+       y = 1  : concrete footing      (25 blocks)
+       y = 2  : iron rebar            (25 blocks)
+       y = 3  : interior wood floor   ( 9 blocks)
+       y = 3..6 : walls               (64 blocks)
+       y = 7  : roof deck             (25 blocks)
+       y = 8  : upper roof tier       ( 9 blocks)
+       y = 9  : ridge cap             ( 1 block)
+       chimney: (3, 2..10, 4)         ( 9 brick)
+       ============================================================ */
 
-    const BUILD_ZONE = [
-      { x: -1, y: 1, z: 5 },
-      { x:  0, y: 1, z: 5 },
-      { x:  1, y: 1, z: 5 },
+    const LX0 = -2, LX1 = 2, LZ0 = 2, LZ1 = 6;
+    const Y_FOOT = 1, Y_REBAR = 2, Y_FLOOR = 3;
+    const Y_W0 = 3, Y_W1 = 6;
+    const Y_ROOF1 = 7, Y_ROOF2 = 8, Y_ROOF3 = 9;
+
+    /* ---- position helpers ---- */
+    function _box(x0, x1, y0, y1, z0, z1, id) {
+      const out = [];
+      for (let x = x0; x <= x1; x++)
+        for (let y = y0; y <= y1; y++)
+          for (let z = z0; z <= z1; z++) out.push({ x, y, z, id });
+      return out;
+    }
+    function _clear(x0, x1, y, z0, z1) {
+      const out = [];
+      for (let x = x0; x <= x1; x++)
+        for (let z = z0; z <= z1; z++) out.push({ x, y, z, id: null });
+      return out;
+    }
+    function _frontRow(y) {
+      const skip = [];
+      if (y === Y_W0 || y === Y_W0 + 1) skip.push(0);        // doorway
+      if (y === Y_W0 + 2) skip.push(-1, 1);                  // windows
+      const out = [];
+      for (let x = LX0; x <= LX1; x++)
+        if (!skip.includes(x)) out.push({ x, y, z: LZ0, id: "wood" });
+      return out;
+    }
+    function _backRow(y) {
+      const skip = (y === Y_W0 + 2) ? [-1, 0, 1] : [];       // windows
+      const out = [];
+      for (let x = LX0; x <= LX1; x++)
+        if (!skip.includes(x)) out.push({ x, y, z: LZ1, id: "wood" });
+      return out;
+    }
+    function _sideCol(x, y0, y1) {
+      const out = [];
+      for (let z = LZ0 + 1; z <= LZ1 - 1; z++)
+        for (let y = y0; y <= y1; y++) {
+          if (y === Y_W0 + 2 && z === 4) continue;           // window
+          out.push({ x, y, z, id: "wood" });
+        }
+      return out;
+    }
+    function _roofRow(z) {
+      const out = [];
+      for (let x = LX0; x <= LX1; x++) out.push({ x, y: Y_ROOF1, z, id: "roof" });
+      return out;
+    }
+
+    /* ============================================================
+       THE 52 LESSONS
+       ============================================================ */
+
+    const LESSONS = [
+      /* ---------- 1–2  SITE SETUP ---------- */
+      {
+        icon: "📖",
+        title: "Read the Construction Guide",
+        body: `Open your instruction book to learn what a foundation is and why it matters.<br><br><strong>Press B</strong> to open the book.`,
+        type: "book",
+        learn: "You read the construction guide."
+      },
+      {
+        icon: "📍",
+        title: "Find the Build Zone",
+        body: `Walk into the <strong>orange marked plot</strong> directly ahead of you.<br><br>This 5 × 5 patch of ground is where your house will stand.`,
+        type: "proximity",
+        zone: { x0: LX0, x1: LX1, z0: LZ0, z1: LZ1 },
+        learn: "Build zone located."
+      },
+
+      /* ---------- 3–5  DIG THE TRENCH ---------- */
+      {
+        icon: "⛏️",
+        title: "Dig the North Trench",
+        body: `Remove the <strong>10 grass blocks</strong> along the north two rows (z = 2 and 3).<br><br><em>Builders strip the topsoil first — it is soft, full of roots and shifts with the weather. Foundations must sit on stable ground beneath it.</em><br><br><strong>Left Click</strong> removes a block.`,
+        type: "build",
+        requires: _clear(LX0, LX1, Y_FOOT, 2, 3),
+        learn: "Topsoil stripped."
+      },
+      {
+        icon: "⛏️",
+        title: "Dig the Centre Trench",
+        body: `Remove the <strong>5 grass blocks</strong> in the middle row (z = 4).<br><br><em>Keep the trench floor flat and level — an uneven base means an uneven house.</em>`,
+        type: "build",
+        requires: _clear(LX0, LX1, Y_FOOT, 4, 4),
+        learn: "Trench continues."
+      },
+      {
+        icon: "⛏️",
+        title: "Dig the South Trench",
+        body: `Remove the last <strong>10 grass blocks</strong> (z = 5 and 6).<br><br>Your excavation is now complete.`,
+        type: "build",
+        requires: _clear(LX0, LX1, Y_FOOT, 5, 6),
+        learn: "Excavation complete."
+      },
+
+      /* ---------- 6–8  CONCRETE FOOTING ---------- */
+      {
+        icon: "🔲",
+        title: "Pour the Footing — North",
+        body: `Fill the north trench with <strong>10 concrete blocks</strong> (z = 2 and 3).<br><br><em>Concrete is extraordinarily strong in compression — it happily carries the entire weight of a building.</em><br><br>Press <strong>3</strong> for Concrete, then <strong>Right Click</strong> to place.`,
+        type: "build",
+        requires: _box(LX0, LX1, Y_FOOT, Y_FOOT, 2, 3, "concrete"),
+        hint: "concrete",
+        learn: "Footing poured."
+      },
+      {
+        icon: "🔲",
+        title: "Pour the Footing — Centre",
+        body: `Fill the middle row with <strong>5 concrete blocks</strong> (z = 4).<br><br><em>The footing spreads the load of the walls over a wider area of soil, so the ground is never overloaded.</em>`,
+        type: "build",
+        requires: _box(LX0, LX1, Y_FOOT, Y_FOOT, 4, 4, "concrete"),
+        hint: "concrete",
+        learn: "Footing poured."
+      },
+      {
+        icon: "🔲",
+        title: "Pour the Footing — South",
+        body: `Finish the footing with the last <strong>10 concrete blocks</strong> (z = 5 and 6).<br><br>All 25 footing blocks are now in place.`,
+        type: "build",
+        requires: _box(LX0, LX1, Y_FOOT, Y_FOOT, 5, 6, "concrete"),
+        hint: "concrete",
+        learn: "Footing complete — 25 blocks."
+      },
+
+      /* ---------- 9  REBAR ---------- */
+      {
+        icon: "🩶",
+        title: "Lay the Rebar Grid",
+        body: `Place <strong>25 iron / rebar blocks</strong> on top of the concrete (y = 2).<br><br><em>Concrete is brittle under <strong>tension</strong> (pulling). Steel is not. Embedding steel bars in the concrete — reinforced concrete — lets the foundation resist both pushing and pulling forces.</em><br><br>Press <strong>6</strong> for Iron/Rebar.`,
+        type: "build",
+        requires: _box(LX0, LX1, Y_REBAR, Y_REBAR, LZ0, LZ1, "iron"),
+        hint: "iron",
+        learn: "Reinforced with rebar."
+      },
+
+      /* ---------- 10–21  WALLS ---------- */
+      {
+        icon: "🧱",
+        title: "Front Wall — Ground Course",
+        body: `Raise the first course of the front wall (y = 3, z = 2).<br><br>Leave the middle two positions empty — that will be the doorway.<br><br><em>Every course of a wall must be level before the next one goes on. Walls are only as straight as the course beneath them.</em><br><br>Press <strong>4</strong> for Wood.`,
+        type: "build",
+        requires: _frontRow(Y_W0),
+        hint: "wood",
+        learn: "First course laid."
+      },
+      {
+        icon: "🧱",
+        title: "Front Wall — Second Course",
+        body: `Add the second course (y = 4) of the front wall.<br><br><em>Staggering the joints between courses — like bricks — makes the wall far stronger than stacking them in continuous vertical lines.</em>`,
+        type: "build",
+        requires: _frontRow(Y_W0 + 1),
+        hint: "wood",
+        learn: "Second course laid."
+      },
+      {
+        icon: "🪟",
+        title: "Front Wall — Window Course",
+        body: `Add the third course (y = 5), but leave the two positions either side of the doorway for windows.<br><br><em>Openings must be <strong>framed</strong>. The blocks above a window or door act as a lintel and carry the load around the gap.</em>`,
+        type: "build",
+        requires: _frontRow(Y_W0 + 2),
+        hint: "wood",
+        learn: "Window openings framed."
+      },
+      {
+        icon: "🧱",
+        title: "Front Wall — Top Course",
+        body: `Finish the front wall with the top course (y = 6).<br><br><em>This is the <strong>wall plate</strong> — it will carry the roof.</em>`,
+        type: "build",
+        requires: _frontRow(Y_W0 + 3),
+        hint: "wood",
+        learn: "Front wall finished."
+      },
+      {
+        icon: "🧱",
+        title: "Back Wall — Ground Course",
+        body: `Now the back wall. Lay the first course (y = 3, z = 6).`,
+        type: "build",
+        requires: _backRow(Y_W0),
+        hint: "wood",
+        learn: "Back wall started."
+      },
+      {
+        icon: "🧱",
+        title: "Back Wall — Second Course",
+        body: `Second course of the back wall (y = 4).`,
+        type: "build",
+        requires: _backRow(Y_W0 + 1),
+        hint: "wood",
+        learn: "Back wall rising."
+      },
+      {
+        icon: "🧱",
+        title: "Back Wall — Window Course",
+        body: `Third course (y = 5). Leave the three middle blocks out — the back windows go here.<br><br><em>More glass on the shaded side lets in daylight without letting in the strongest sun, keeping the house cooler in summer.</em>`,
+        type: "build",
+        requires: _backRow(Y_W0 + 2),
+        hint: "wood",
+        learn: "Back windows framed."
+      },
+      {
+        icon: "🧱",
+        title: "Back Wall — Top Course",
+        body: `Finish the back wall (y = 6).`,
+        type: "build",
+        requires: _backRow(Y_W0 + 3),
+        hint: "wood",
+        learn: "Back wall finished."
+      },
+      {
+        icon: "🧱",
+        title: "Left Wall — Lower Courses",
+        body: `Build the two lower courses of the left side wall (x = -2, y = 3 and 4, z = 3 to 5).<br><br><em>Side walls tie the front and back walls together. Together the four walls form a rigid box — much stronger than four separate panels.</em>`,
+        type: "build",
+        requires: _sideCol(LX0, Y_W0, Y_W0 + 1),
+        hint: "wood",
+        learn: "Left wall started."
+      },
+      {
+        icon: "🪟",
+        title: "Left Wall — Upper Courses",
+        body: `Finish the left wall (y = 5 and 6), leaving the middle of the upper course open for a window.`,
+        type: "build",
+        requires: _sideCol(LX0, Y_W0 + 2, Y_W0 + 3),
+        hint: "wood",
+        learn: "Left wall finished."
+      },
+      {
+        icon: "🧱",
+        title: "Right Wall — Lower Courses",
+        body: `Build the two lower courses of the right side wall (x = 2, y = 3 and 4).`,
+        type: "build",
+        requires: _sideCol(LX1, Y_W0, Y_W0 + 1),
+        hint: "wood",
+        learn: "Right wall started."
+      },
+      {
+        icon: "🪟",
+        title: "Right Wall — Upper Courses",
+        body: `Finish the right wall (y = 5 and 6), leaving a window opening in the upper course.<br><br>All four walls are now standing.`,
+        type: "build",
+        requires: _sideCol(LX1, Y_W0 + 2, Y_W0 + 3),
+        hint: "wood",
+        learn: "Right wall finished — shell complete."
+      },
+
+      /* ---------- 22–25  DOOR & WINDOWS ---------- */
+      {
+        icon: "🚪",
+        title: "Install the Front Door",
+        body: `Place <strong>2 door blocks</strong> in the gap in the front wall (y = 3 and 4, z = 2, x = 0).<br><br><em>Doors are made in factories to standard sizes so they fit standard openings. The opening is always built slightly larger, then the gap is packed with insulation.</em><br><br>Press <strong>0</strong> for Door.`,
+        type: "build",
+        requires: [
+          { x: 0, y: Y_W0,     z: LZ0, id: "door" },
+          { x: 0, y: Y_W0 + 1, z: LZ0, id: "door" }
+        ],
+        hint: "door",
+        learn: "The house has a front door."
+      },
+      {
+        icon: "🪟",
+        title: "Glaze the Front Windows",
+        body: `Place <strong>2 glass blocks</strong> in the front wall openings (x = -1 and x = 1, y = 5, z = 2).<br><br><em>Glass is a poor conductor of heat, so a sealed window lets light in while keeping warmth inside.</em><br><br>Press <strong>7</strong> for Glass.`,
+        type: "build",
+        requires: [
+          { x: -1, y: Y_W0 + 2, z: LZ0, id: "glass" },
+          { x:  1, y: Y_W0 + 2, z: LZ0, id: "glass" }
+        ],
+        hint: "glass",
+        learn: "Front windows glazed."
+      },
+      {
+        icon: "🪟",
+        title: "Glaze the Back Windows",
+        body: `Place <strong>3 glass blocks</strong> in the back wall (x = -1, 0, 1, y = 5, z = 6).`,
+        type: "build",
+        requires: [
+          { x: -1, y: Y_W0 + 2, z: LZ1, id: "glass" },
+          { x:  0, y: Y_W0 + 2, z: LZ1, id: "glass" },
+          { x:  1, y: Y_W0 + 2, z: LZ1, id: "glass" }
+        ],
+        hint: "glass",
+        learn: "Back windows glazed."
+      },
+      {
+        icon: "🪟",
+        title: "Glaze the Side Windows",
+        body: `Place <strong>2 glass blocks</strong> in the side walls (x = -2 and x = 2, y = 5, z = 4).<br><br>The building is now weathertight.`,
+        type: "build",
+        requires: [
+          { x: LX0, y: Y_W0 + 2, z: 4, id: "glass" },
+          { x: LX1, y: Y_W0 + 2, z: 4, id: "glass" }
+        ],
+        hint: "glass",
+        learn: "House is weathertight."
+      },
+
+      /* ---------- 26–34  ROOF & CHIMNEY ---------- */
+      {
+        icon: "🔺",
+        title: "Roof Deck — Front Row",
+        body: `Start the roof: place <strong>5 roof tiles</strong> along the front edge (y = 7, z = 2).<br><br><em>Roofs are built in <strong>courses</strong> that overlap, so water always runs off the outside rather than seeping underneath.</em><br><br>Press <strong>9</strong> for Roof Tile.`,
+        type: "build",
+        requires: _roofRow(2),
+        hint: "roof",
+        learn: "Roof started."
+      },
+      { icon: "🔺", title: "Roof Deck — Row 2",
+        body: `Add the next row of <strong>5 roof tiles</strong> (z = 3).`,
+        type: "build", requires: _roofRow(3), hint: "roof", learn: "Roof course laid." },
+
+      { icon: "🔺", title: "Roof Deck — Row 3",
+        body: `Add the middle row of <strong>5 roof tiles</strong> (z = 4).`,
+        type: "build", requires: _roofRow(4), hint: "roof", learn: "Roof course laid." },
+
+      { icon: "🔺", title: "Roof Deck — Row 4",
+        body: `Add the next row of <strong>5 roof tiles</strong> (z = 5).`,
+        type: "build", requires: _roofRow(5), hint: "roof", learn: "Roof course laid." },
+
+      { icon: "🔺", title: "Roof Deck — Back Row",
+        body: `Complete the roof deck with the back row of <strong>5 roof tiles</strong> (z = 6).`,
+        type: "build", requires: _roofRow(6), hint: "roof", learn: "Roof deck complete." },
+
+      {
+        icon: "⛰️",
+        title: "Build the Upper Roof Tier",
+        body: `Place <strong>9 roof tiles</strong> in a 3 × 3 square on top of the deck (y = 8, x = -1..1, z = 3..5).<br><br><em>Stepping the roof in like this creates a <strong>pitched</strong> shape. Pitch makes rain and snow slide off instead of pooling.</em>`,
+        type: "build",
+        requires: _box(-1, 1, Y_ROOF2, Y_ROOF2, 3, 5, "roof"),
+        hint: "roof",
+        learn: "Pitched roof formed."
+      },
+      {
+        icon: "👑",
+        title: "Set the Ridge Cap",
+        body: `Place the single <strong>ridge cap tile</strong> at the very top (x = 0, y = 9, z = 4).<br><br><em>The ridge is where the two roof slopes meet. It takes the worst of the wind and weather, so it is always capped and sealed.</em>`,
+        type: "build",
+        requires: [{ x: 0, y: Y_ROOF3, z: 4, id: "roof" }],
+        hint: "roof",
+        learn: "Ridge capped."
+      },
+      {
+        icon: "🧱",
+        title: "Build the Chimney — Base",
+        body: `Place <strong>4 brick blocks</strong> to start the chimney at x = 3, z = 4, y = 2 to 5.<br><br><em>Brick is fired clay — it is fireproof, so it is the traditional material for anything that touches a flue.</em><br><br>Press <strong>8</strong> for Brick.`,
+        type: "build",
+        requires: _box(3, 3, 2, 5, 4, 4, "brick"),
+        hint: "brick",
+        learn: "Chimney base built."
+      },
+      {
+        icon: "🧱",
+        title: "Build the Chimney — Shaft",
+        body: `Finish the chimney with <strong>5 more brick blocks</strong> (y = 6 to 10).<br><br><em>A chimney must reach above the roof line — otherwise it can be caught in a down-draught and smoke blows back into the house.</em>`,
+        type: "build",
+        requires: _box(3, 3, 6, 10, 4, 4, "brick"),
+        hint: "brick",
+        learn: "Chimney complete."
+      },
+
+      /* ---------- 35–43  INTERIOR ---------- */
+      {
+        icon: "🪵",
+        title: "Lay the Floor — Front Room",
+        body: `Lay <strong>3 wood floorboards</strong> across the front of the interior (y = 3, z = 3, x = -1..1).<br><br><em>Floorboards are laid on top of the slab. They spread the load of furniture and feet across many joists below.</em>`,
+        type: "build",
+        requires: _box(-1, 1, Y_FLOOR, Y_FLOOR, 3, 3, "wood"),
+        hint: "wood",
+        learn: "Floorboards laid."
+      },
+      {
+        icon: "🪵",
+        title: "Lay the Floor — Centre",
+        body: `Lay the middle <strong>3 floorboards</strong> (y = 3, z = 4).`,
+        type: "build",
+        requires: _box(-1, 1, Y_FLOOR, Y_FLOOR, 4, 4, "wood"),
+        hint: "wood",
+        learn: "Floorboards laid."
+      },
+      {
+        icon: "🪵",
+        title: "Lay the Floor — Back Room",
+        body: `Finish the floor with the last <strong>3 floorboards</strong> (y = 3, z = 5).`,
+        type: "build",
+        requires: _box(-1, 1, Y_FLOOR, Y_FLOOR, 5, 5, "wood"),
+        hint: "wood",
+        learn: "Interior floor complete."
+      },
+      {
+        icon: "🚧",
+        title: "Partition Wall — Ground Course",
+        body: `Build the first course of an interior partition wall (y = 4, z = 4). Leave a gap in the middle for an internal door.<br><br><em>Interior walls are <strong>non-load-bearing</strong> — they only carry their own weight, so they can be thinner and moved later.</em>`,
+        type: "build",
+        requires: [
+          { x: -1, y: 4, z: 4, id: "wood" },
+          { x:  1, y: 4, z: 4, id: "wood" }
+        ],
+        hint: "wood",
+        learn: "Partition started."
+      },
+      {
+        icon: "🚧",
+        title: "Partition Wall — Second Course",
+        body: `Add the second course (y = 5, z = 4), again leaving the middle open.`,
+        type: "build",
+        requires: [
+          { x: -1, y: 5, z: 4, id: "wood" },
+          { x:  1, y: 5, z: 4, id: "wood" }
+        ],
+        hint: "wood",
+        learn: "Partition rising."
+      },
+      {
+        icon: "🚧",
+        title: "Partition Wall — Top Course",
+        body: `Finish the partition with the top course (y = 6, z = 4, x = -1..1).<br><br>There is now a bedroom at the back and a living room at the front.`,
+        type: "build",
+        requires: _box(-1, 1, 6, 6, 4, 4, "wood"),
+        hint: "wood",
+        learn: "Partition complete."
+      },
+      {
+        icon: "🚪",
+        title: "Hang the Interior Door",
+        body: `Place <strong>2 door blocks</strong> in the partition opening (x = 0, y = 4 and 5, z = 4).`,
+        type: "build",
+        requires: [
+          { x: 0, y: 4, z: 4, id: "door" },
+          { x: 0, y: 5, z: 4, id: "door" }
+        ],
+        hint: "door",
+        learn: "Interior door hung."
+      },
+      {
+        icon: "🍳",
+        title: "Build the Kitchen Counter",
+        body: `Place <strong>3 concrete blocks</strong> along the back wall to form the kitchen counter (y = 4, z = 5, x = -1..1).<br><br><em>Counter height is standardised at around 90 cm — tall enough to work at comfortably, low enough to reach the back.</em>`,
+        type: "build",
+        requires: _box(-1, 1, 4, 4, 5, 5, "concrete"),
+        hint: "concrete",
+        learn: "Kitchen counter built."
+      },
+      {
+        icon: "🍽️",
+        title: "Fit the Counter Top",
+        body: `Place <strong>3 iron blocks</strong> on top of the counter as a worktop (y = 5, z = 5, x = -1..1).<br><br><em>Worktops are hard, smooth and easy to wipe clean — that is why real kitchens use stone, steel or composite.</em>`,
+        type: "build",
+        requires: _box(-1, 1, 5, 5, 5, 5, "iron"),
+        hint: "iron",
+        learn: "Kitchen fitted out."
+      },
+
+      /* ---------- 44–52  EXTERIOR & FINISHING ---------- */
+      {
+        icon: "🧱",
+        title: "Lay the Front Walkway",
+        body: `Replace <strong>4 grass blocks</strong> with concrete to make a path to the door (y = 1: x = -1..1 at z = 0, plus x = 0 at z = -1).<br><br><em>Paths are laid on a compacted sub-base and slope gently away from the building so rain drains away from the foundation.</em>`,
+        type: "build",
+        requires: [
+          { x: -1, y: 1, z: 0, id: "concrete" },
+          { x:  0, y: 1, z: 0, id: "concrete" },
+          { x:  1, y: 1, z: 0, id: "concrete" },
+          { x:  0, y: 1, z: -1, id: "concrete" }
+        ],
+        hint: "concrete",
+        learn: "Walkway laid."
+      },
+      {
+        icon: "🧱",
+        title: "Lay the Front Porch",
+        body: `Pave the strip directly in front of the door with <strong>3 concrete blocks</strong> (y = 1, z = 1, x = -1..1).`,
+        type: "build",
+        requires: _box(-1, 1, 1, 1, 1, 1, "concrete"),
+        hint: "concrete",
+        learn: "Porch paved."
+      },
+      {
+        icon: "🌱",
+        title: "Dig the Garden Beds",
+        body: `Replace <strong>4 grass blocks</strong> with dirt to make planting beds (y = 1): (-3, 1) and (-3, 2), plus (3, 1) and (3, 2).<br><br><em>Topsoil is stripped and replaced with enriched planting soil so roots can establish quickly.</em>`,
+        type: "build",
+        requires: [
+          { x: -3, y: 1, z: 1, id: "dirt" },
+          { x: -3, y: 1, z: 2, id: "dirt" },
+          { x:  3, y: 1, z: 1, id: "dirt" },
+          { x:  3, y: 1, z: 2, id: "dirt" }
+        ],
+        hint: "dirt",
+        learn: "Garden beds prepared."
+      },
+      {
+        icon: "🌻",
+        title: "Fill the Flower Boxes",
+        body: `Add <strong>4 sand blocks</strong> on top of the garden beds (y = 2) as a free-draining planting layer.<br><br><em>Sand drains fast, which suits plants that hate sitting in wet soil.</em><br><br>Press <strong>5</strong> for Sand.`,
+        type: "build",
+        requires: [
+          { x: -3, y: 2, z: 1, id: "sand" },
+          { x: -3, y: 2, z: 2, id: "sand" },
+          { x:  3, y: 2, z: 1, id: "sand" },
+          { x:  3, y: 2, z: 2, id: "sand" }
+        ],
+        hint: "sand",
+        learn: "Flower boxes filled."
+      },
+      {
+        icon: "🪵",
+        title: "Set the Fence Posts",
+        body: `Stand <strong>4 wood posts</strong> in the garden (y = 2): at x = -4, z = 1 and 3, and at x = 4, z = 1 and 3.<br><br><em>Fence posts are set below the frost line or on a concrete pad so they do not heave upward in winter.</em>`,
+        type: "build",
+        requires: [
+          { x: -4, y: 2, z: 1, id: "wood" },
+          { x: -4, y: 2, z: 3, id: "wood" },
+          { x:  4, y: 2, z: 1, id: "wood" },
+          { x:  4, y: 2, z: 3, id: "wood" }
+        ],
+        hint: "wood",
+        learn: "Fence posts set."
+      },
+      {
+        icon: "🪵",
+        title: "Fix the Fence Rails",
+        body: `Connect the posts with <strong>2 wood rails</strong> at (-4, 2, 2) and (4, 2, 2).`,
+        type: "build",
+        requires: [
+          { x: -4, y: 2, z: 2, id: "wood" },
+          { x:  4, y: 2, z: 2, id: "wood" }
+        ],
+        hint: "wood",
+        learn: "Fence finished."
+      },
+      {
+        icon: "🔨",
+        title: "Build the Roof Overhang",
+        body: `Add <strong>5 wood blocks</strong> along the front of the roof (y = 7, z = 1, x = -2..2).<br><br><em>An <strong>eave</strong> throws rainwater clear of the walls and shades the windows from high summer sun.</em>`,
+        type: "build",
+        requires: _box(LX0, LX1, Y_ROOF1, Y_ROOF1, 1, 1, "wood"),
+        hint: "wood",
+        learn: "Eaves built."
+      },
+      {
+        icon: "🔲",
+        title: "Cap the Chimney",
+        body: `Place <strong>1 concrete block</strong> on top of the chimney at (3, 11, 4).<br><br><em>The cap keeps rain out of the flue and stops birds nesting in it.</em>`,
+        type: "build",
+        requires: [{ x: 3, y: 11, z: 4, id: "concrete" }],
+        hint: "concrete",
+        learn: "Chimney capped."
+      },
+      {
+        icon: "⭐",
+        title: "Raise the Weather Vane",
+        body: `Place the final <strong>1 iron block</strong> at the very top of the ridge (0, 10, 4).<br><br><em>Topping out is the traditional celebration when the last piece of a building's structure goes in. Well done — your house is complete.</em>`,
+        type: "build",
+        requires: [{ x: 0, y: 10, z: 4, id: "iron" }],
+        hint: "iron",
+        learn: "The house is finished!"
+      }
     ];
 
+    /* ============================================================
+       TASK SYSTEM ENGINE
+       ============================================================ */
+
     const taskState = {
-      lesson:       1,          // ← NEW: which lesson is active
-      current:      0,
-      bookOpened:   false,
-      zoneVisited:  false,
-      dugPositions: new Set(),
-      concretePositions: new Set(),
-      rebarPositions:    new Set(),
+      current: 0,
+      done: false,
     };
 
     const GameEvents = {
@@ -913,177 +1559,256 @@
       },
     };
 
-    let _zoneMarkers = [];
+    /* ---------- ghost / target markers ---------- */
+    let _ghosts       = [];
+    let _ghostPlace   = null;
+    let _ghostClear   = null;
+    let _zoneMat      = null;
 
-    function _createZoneMarkers(scene) {
-      BUILD_ZONE.forEach(pos => {
-        const marker = BABYLON.MeshBuilder.CreateBox(
-          "zone_" + pos.x + "_" + pos.z,
-          { width: 1.01, height: 0.05, depth: 1.01 },
-          scene
-        );
-        marker.position.set(pos.x, pos.y + 0.5, pos.z);
-        marker.isPickable = false;
-        const mat = new BABYLON.StandardMaterial("zone_mat", scene);
-        mat.diffuseColor  = new BABYLON.Color3(1, 0.63, 0.08);
-        mat.emissiveColor = new BABYLON.Color3(0.8, 0.4, 0.0);
-        mat.alpha         = 0.55;
-        marker.material   = mat;
-        _zoneMarkers.push(marker);
+    function _initGhostMaterials(scene) {
+      _ghostPlace = new BABYLON.StandardMaterial("ghostPlace", scene);
+      _ghostPlace.wireframe       = true;
+      _ghostPlace.emissiveColor   = new BABYLON.Color3(0.25, 0.85, 1.0);
+      _ghostPlace.disableLighting = true;
+
+      _ghostClear = new BABYLON.StandardMaterial("ghostClear", scene);
+      _ghostClear.wireframe       = true;
+      _ghostClear.emissiveColor   = new BABYLON.Color3(1.0, 0.30, 0.25);
+      _ghostClear.disableLighting = true;
+
+      _zoneMat = new BABYLON.StandardMaterial("zoneMat", scene);
+      _zoneMat.diffuseColor  = new BABYLON.Color3(1, 0.63, 0.08);
+      _zoneMat.emissiveColor = new BABYLON.Color3(0.85, 0.42, 0.0);
+      _zoneMat.alpha         = 0.45;
+    }
+
+    function _clearGhosts() {
+      _ghosts.forEach(g => g.mesh.dispose());
+      _ghosts = [];
+    }
+
+    function _buildGhosts(lesson) {
+      _clearGhosts();
+      if (!lesson || !_playerScene) return;
+
+      if (lesson.type === "proximity" && lesson.zone) {
+        const z = lesson.zone;
+        const m = BABYLON.MeshBuilder.CreateBox("zonePlate", {
+          width:  (z.x1 - z.x0) + 1.06,
+          height: 0.08,
+          depth:  (z.z1 - z.z0) + 1.06
+        }, _playerScene);
+        m.position.set((z.x0 + z.x1) / 2, 1.56, (z.z0 + z.z1) / 2);
+        m.material   = _zoneMat;
+        m.isPickable = false;
+        _ghosts.push({ mesh: m, req: null });
+        return;
+      }
+
+      if (lesson.type !== "build" || !lesson.requires) return;
+
+      lesson.requires.forEach(r => {
+        const m = BABYLON.MeshBuilder.CreateBox("ghost", { size: 1.05 }, _playerScene);
+        m.position.set(r.x, r.y, r.z);
+        m.material   = r.id ? _ghostPlace : _ghostClear;
+        m.isPickable = false;
+        _ghosts.push({ mesh: m, req: r });
+      });
+
+      _updateGhosts();
+    }
+
+    function _updateGhosts() {
+      _ghosts.forEach(g => {
+        if (!g.req) return;
+        const cur = getBlockId(g.req.x, g.req.y, g.req.z);
+        g.mesh.setEnabled(cur !== g.req.id);
       });
     }
 
-    function _removeZoneMarkers() {
-      _zoneMarkers.forEach(m => m.dispose());
-      _zoneMarkers = [];
+    /* ---------- lesson checking ---------- */
+    function _satisfied(lesson) {
+      if (!lesson.requires) return false;
+      return lesson.requires.every(r => getBlockId(r.x, r.y, r.z) === r.id);
     }
 
-    function _inZone(x, y, z) {
-      return BUILD_ZONE.some(p =>
-        Math.round(x) === p.x &&
-        Math.round(y) === p.y &&
-        Math.round(z) === p.z
-      );
+    function _countProgress(lesson) {
+      if (!lesson.requires) return { done: 0, total: 0 };
+      let done = 0;
+      lesson.requires.forEach(r => {
+        if (getBlockId(r.x, r.y, r.z) === r.id) done++;
+      });
+      return { done, total: lesson.requires.length };
     }
 
-    function _posKey(x, y, z) {
-      return Math.round(x) + "," + Math.round(y) + "," + Math.round(z);
+    function _checkLesson() {
+      if (taskState.done) return;
+      const L = LESSONS[taskState.current];
+      if (!L) return;
+
+      if (L.type === "build") {
+        _updateGhosts();
+        _updateLessonProgress();
+        if (_satisfied(L)) _completeLesson();
+      }
     }
 
-    function _completeTask(index) {
-      const card   = document.getElementById("task-" + index);
-      const status = document.getElementById("task-status-" + index);
-      if (!card) return;
-      card.classList.remove("active");
-      card.classList.add("completed");
-      if (status) status.textContent = "✅";
+    function _proximityTick() {
+      if (taskState.done || !_camera) return;
+      const L = LESSONS[taskState.current];
+      if (!L || L.type !== "proximity" || !L.zone) return;
+
+      const p = _camera.position;
+      const z = L.zone;
+      if (p.x >= z.x0 - 0.9 && p.x <= z.x1 + 0.9 &&
+          p.z >= z.z0 - 0.9 && p.z <= z.z1 + 0.9) {
+        _completeLesson();
+      }
     }
 
-    function _activateTask(index) {
-      const card = document.getElementById("task-" + index);
-      if (!card) return;
-      card.classList.remove("locked");
-      card.classList.add("active");
-      taskState.current = index;
-    }
-
-    function _showCompletion() {
-      window.__lessonComplete = true;
-
-      const el = document.getElementById("task-complete");
-      if (el) el.style.display = "block";
-      _removeZoneMarkers();
-
-      const flash = document.createElement("div");
-      flash.style.cssText = `
-        position:fixed; inset:0; background:rgba(46,204,113,0.25);
-        z-index:500; pointer-events:none;
-        animation: fadeOut 1.2s ease forwards;
+    /* ---------- completion & advancement ---------- */
+    function _lessonToast(lesson) {
+      const t = document.createElement("div");
+      t.style.cssText = `
+        position:fixed; top:74px; left:50%; transform:translateX(-50%);
+        background:rgba(46,204,113,0.94); color:#05220f;
+        padding:13px 26px; border-radius:12px; font-weight:700; font-size:15px;
+        z-index:400; pointer-events:none; box-shadow:0 8px 30px rgba(0,0,0,0.45);
+        transition: opacity .45s ease, transform .45s ease;
+        text-align:center; max-width:440px;
       `;
-      document.head.insertAdjacentHTML("beforeend",
-        "<style>@keyframes fadeOut{from{opacity:1}to{opacity:0}}</style>"
-      );
-      document.body.appendChild(flash);
-      setTimeout(() => flash.remove(), 1200);
-      setTimeout(() => showCompletionScreen(), 1400);
+      t.innerHTML = `✅ ${lesson.title}<br>
+        <span style="font-weight:500; font-size:12px; opacity:.8;">${lesson.learn || ""}</span>`;
+      document.body.appendChild(t);
+      setTimeout(() => {
+        t.style.opacity = "0";
+        t.style.transform = "translateX(-50%) translateY(-18px)";
+      }, 2100);
+      setTimeout(() => t.remove(), 2800);
     }
 
-    function toggleCard(index) {
-      const card = document.getElementById("task-" + index);
-      if (!card || card.classList.contains("locked")) return;
-      if (card.classList.contains("completed")) {
-        const body = card.querySelector(".task-body");
-        if (body) body.style.display = body.style.display === "block" ? "none" : "block";
+    function _completeLesson() {
+      const L = LESSONS[taskState.current];
+      if (!L) return;
+
+      _lessonToast(L);
+      taskState.current++;
+
+      if (taskState.current >= LESSONS.length) {
+        _finishAll();
+        return;
       }
+
+      _renderPanel();
+      _buildGhosts(LESSONS[taskState.current]);
+
+      // A later lesson may already be satisfied (e.g. blocks left over).
+      setTimeout(_checkLesson, 500);
     }
 
-    // ---------- lesson-1 checks (guarded so they go quiet in lesson 2) ----------
+    function _finishAll() {
+      taskState.done = true;
+      window.__lessonComplete = true;
+      _clearGhosts();
+      _renderPanel();
 
-    function _checkBookOpened() {
-      if (taskState.lesson !== 1) return;         // ← NEW
-      if (taskState.current !== 0 || taskState.bookOpened) return;
-      taskState.bookOpened = true;
-      _completeTask(0);
-      _activateTask(1);
-      console.log("[tasks] Step 1 complete — book opened");
-    }
-
-    function _checkZoneVisited(playerX, playerZ) {
-      if (taskState.lesson !== 1) return;         // ← NEW
-      if (taskState.current !== 1 || taskState.zoneVisited) return;
-      const nearZone = BUILD_ZONE.some(p =>
-        Math.abs(playerX - p.x) < 1.5 &&
-        Math.abs(playerZ - p.z) < 1.5
-      );
-      if (!nearZone) return;
-      taskState.zoneVisited = true;
-      _completeTask(1);
-      _activateTask(2);
-      console.log("[tasks] Step 2 complete — zone reached");
-    }
-
-    function _checkDug(x, y, z) {
-      if (taskState.lesson !== 1) return;         // ← NEW
-      if (taskState.current !== 2) return;
-      if (!_inZone(x, y, z)) return;
-      taskState.dugPositions.add(_posKey(x, y, z));
-      if (taskState.dugPositions.size >= 3) {
-        _completeTask(2);
-        _activateTask(3);
-        console.log("[tasks] Step 3 complete — trench dug");
-      }
-    }
-
-    function _checkConcrete(x, y, z, blockId) {
-      if (taskState.lesson !== 1) return;         // ← NEW
-      if (taskState.current !== 3) return;
-      if (blockId !== "concrete") return;
-      if (!BUILD_ZONE.some(p =>
-        Math.round(x) === p.x && Math.round(z) === p.z
-      )) return;
-      taskState.concretePositions.add(_posKey(x, y, z));
-      if (taskState.concretePositions.size >= 3) {
-        _completeTask(3);
-        _activateTask(4);
-        console.log("[tasks] Step 4 complete — concrete poured");
-      }
-    }
-
-    function _checkRebar(x, y, z, blockId) {
-      if (taskState.lesson !== 1) return;         // ← NEW
-      if (taskState.current !== 4) return;
-      if (blockId !== "iron") return;
-      const onConcrete = [...taskState.concretePositions].some(key => {
-        const [cx, cy, cz] = key.split(",").map(Number);
-        return Math.round(x) === cx &&
-               Math.round(z) === cz &&
-               Math.round(y) === cy + 1;
+      showCompletionScreen({
+        title:    "House Complete!",
+        subtitle: "BuildRight — 52 Lesson Course",
+        steps:    "52 / 52",
+        hasNext:  false,
+        learned: [
+          "How a foundation is dug, poured and reinforced",
+          "Why rebar lets concrete resist tension",
+          "How walls are raised course by course and kept level",
+          "How openings are framed so loads travel around them",
+          "Why roofs are pitched and capped at the ridge",
+          "How a building is fitted out and finished"
+        ]
       });
-      if (!onConcrete) return;
-      taskState.rebarPositions.add(_posKey(x, y, z));
-      if (taskState.rebarPositions.size >= 3) {
-        _completeTask(4);
-        _showCompletion();
-        console.log("[tasks] Step 5 complete — foundation done! 🎉");
-      }
     }
 
-    function _zoneProximityCheck() {
-      if (taskState.lesson !== 1) return;         // ← NEW
-      if (taskState.current !== 1 || !_camera) return;
-      _checkZoneVisited(_camera.position.x, _camera.position.z);
+    /* ---------- panel ---------- */
+    function _updateLessonProgress() {
+      const el = document.getElementById("lesson-progress");
+      if (!el) return;
+      const L = LESSONS[taskState.current];
+      if (!L || L.type !== "build") { el.textContent = ""; return; }
+      const { done, total } = _countProgress(L);
+      el.textContent = `Progress: ${done} / ${total}`;
     }
 
+    function _renderPanel() {
+      const panel = document.getElementById("task-panel");
+      if (!panel) return;
+
+      const total = LESSONS.length;
+      const idx   = Math.min(taskState.current, total - 1);
+      const cur   = LESSONS[idx];
+      const nxt   = LESSONS[idx + 1];
+      const pct   = Math.round((taskState.current / total) * 100);
+
+      panel.innerHTML = `
+        <div style="font-size:11px;font-weight:700;letter-spacing:.1em;
+          color:rgba(255,255,255,.42);text-transform:uppercase;padding-left:4px;">
+          🏗️ BuildRight — House Project
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,.6);padding-left:4px;">
+          Lesson ${idx + 1} of ${total}
+        </div>
+        <div style="height:6px;background:rgba(255,255,255,.1);
+          border-radius:3px;overflow:hidden;margin:2px 0 4px;">
+          <div style="height:100%;width:${pct}%;
+            background:linear-gradient(90deg,#2ecc71,#5dade2);
+            transition:width .4s ease;"></div>
+        </div>
+
+        <div class="task-card active">
+          <div class="task-header">
+            <span class="task-icon">${cur.icon}</span>
+            <span>${cur.title}</span>
+          </div>
+          <div class="task-body" style="display:block;">
+            ${cur.body}
+            <div id="lesson-progress" style="margin-top:9px;font-weight:700;color:#e8a020;"></div>
+          </div>
+        </div>
+
+        ${nxt ? `
+        <div class="task-card locked">
+          <div class="task-header">
+            <span class="task-icon">${nxt.icon}</span>
+            <span>Next: ${nxt.title}</span>
+          </div>
+        </div>` : `
+        <div class="task-card" style="border-color:#2ecc71;background:rgba(46,204,113,.1);">
+          <div class="task-header">
+            <span class="task-icon">🏆</span>
+            <span style="color:#2ecc71;">All 52 lessons complete!</span>
+          </div>
+        </div>`}
+      `;
+
+      _updateLessonProgress();
+    }
+
+    /* ---------- init ---------- */
     function initTasks(scene) {
-      _createZoneMarkers(scene);
-      GameEvents.on("blockRemoved", ({ x, y, z }) => _checkDug(x, y, z));
-      GameEvents.on("blockPlaced",  ({ x, y, z, blockId }) => {
-        _checkConcrete(x, y, z, blockId);
-        _checkRebar(x, y, z, blockId);
+      _initGhostMaterials(scene);
+
+      GameEvents.on("blockRemoved", () => { _checkLesson(); });
+      GameEvents.on("blockPlaced",  () => { _checkLesson(); });
+      GameEvents.on("bookOpened",   () => {
+        const L = LESSONS[taskState.current];
+        if (L && L.type === "book") _completeLesson();
       });
-      GameEvents.on("bookOpened", () => _checkBookOpened());
-      scene.onBeforeRenderObservable.add(_zoneProximityCheck);
-      console.log("[tasks] Task system initialized");
+
+      scene.onBeforeRenderObservable.add(_proximityTick);
+
+      _renderPanel();
+      _buildGhosts(LESSONS[0]);
+
+      console.log("[tasks] 52-lesson course initialised");
     }
   </script>
 
@@ -1130,28 +1855,14 @@
     }
   </script>
 
-  <!-- completion.js  — REWRITTEN -->
+  <!-- completion.js -->
   <script>
-    // ============================================================
-    // COMPLETION SCREEN  (now generic + reusable for every lesson)
-    // ============================================================
-
     let _startTime       = null;
-    let _completedTime   = null;
     let _completionShown = false;
 
     function initCompletion() {
       _startTime = Date.now();
       console.log("[completion] Timer started");
-    }
-
-    /* Fade out + remove the victory screen (used when moving on) */
-    function dismissCompletion() {
-      const s = document.getElementById("completion-screen");
-      if (!s) return;
-      s.style.transition = "opacity 0.25s ease";
-      s.style.opacity = "0";
-      setTimeout(() => s.remove(), 250);
     }
 
     function _statBox(value, label, color) {
@@ -1167,34 +1878,27 @@
         </div>`;
     }
 
-    /* opts = { title, subtitle, steps, learned[], nextLabel, hasNext } */
     function showCompletionScreen(opts) {
       opts = opts || {};
       if (_completionShown) return;
       _completionShown = true;
 
-      _completedTime = Date.now();
-      const elapsed = Math.max(0, Math.floor((_completedTime - _startTime) / 1000));
+      const elapsed = Math.max(0, Math.floor((Date.now() - _startTime) / 1000));
       const mins    = Math.floor(elapsed / 60);
       const secs    = elapsed % 60;
       const timeStr = mins > 0 ? mins + "m " + secs + "s" : secs + "s";
 
       let starCount = 1;
-      if (elapsed < 180)      starCount = 3;
-      else if (elapsed < 360) starCount = 2;
+      if (elapsed < 900)       starCount = 3;
+      else if (elapsed < 1800) starCount = 2;
       const stars = "⭐".repeat(starCount);
 
       const title     = opts.title     || "Lesson Complete!";
-      const subtitle  = opts.subtitle  || "Foundation Lesson — BuildRight";
-      const stepsDone = opts.steps     || "5 / 5";
+      const subtitle  = opts.subtitle  || "BuildRight";
+      const stepsDone = opts.steps     || "52 / 52";
       const nextLabel = opts.nextLabel || "Next Lesson →";
       const hasNext   = opts.hasNext !== false;
-      const learned   = opts.learned   || [
-        "Why foundations must be dug into stable ground",
-        "Why concrete handles compression forces",
-        "Why rebar handles tension so concrete doesn't crack",
-        "How reinforced concrete is built layer by layer"
-      ];
+      const learned   = opts.learned   || [];
       const learnedHtml = learned.map(t => "✔ " + t).join("<br/>");
 
       const paused = document.getElementById("paused-overlay");
@@ -1216,10 +1920,12 @@
           background: linear-gradient(145deg, #1a2a1a, #0d1f0d);
           border: 2px solid #2ecc71;
           border-radius: 20px;
-          padding: 48px 56px;
+          padding: 44px 52px;
           text-align: center;
-          max-width: 480px;
+          max-width: 520px;
           width: 90%;
+          max-height: 88vh;
+          overflow-y: auto;
           box-shadow: 0 0 60px rgba(46,204,113,0.3);
           font-family: 'Segoe UI', system-ui, sans-serif;
           color: #fff;
@@ -1230,14 +1936,14 @@
             margin: 0 0 4px; letter-spacing: -0.02em;">${title}</h1>
 
           <p style="font-size: 0.95rem; color: rgba(255,255,255,0.5);
-            margin: 0 0 28px; letter-spacing: 0.05em; text-transform: uppercase;">
+            margin: 0 0 26px; letter-spacing: 0.05em; text-transform: uppercase;">
             ${subtitle}</p>
 
-          <div style="font-size: 2.2rem; margin-bottom: 24px; letter-spacing: 6px;">
+          <div style="font-size: 2.2rem; margin-bottom: 22px; letter-spacing: 6px;">
             ${stars}
           </div>
 
-          <div style="display: flex; gap: 16px; justify-content: center; margin-bottom: 32px;">
+          <div style="display: flex; gap: 14px; justify-content: center; margin-bottom: 28px; flex-wrap: wrap;">
             ${_statBox(timeStr, "Time", "#f5b534")}
             ${_statBox(stepsDone, "Steps Done", "#5dade2")}
             ${_statBox(String(starCount), "Stars", "#2ecc71")}
@@ -1248,17 +1954,17 @@
             border: 1px solid rgba(46,204,113,0.2);
             border-radius: 10px;
             padding: 14px 18px;
-            margin-bottom: 28px;
+            margin-bottom: 26px;
             text-align: left;
             font-size: 13px;
-            line-height: 1.7;
-            color: rgba(255,255,255,0.75);
+            line-height: 1.75;
+            color: rgba(255,255,255,0.78);
           ">
             <strong style="color:#2ecc71;">📚 What you learned:</strong><br/>
             ${learnedHtml}
           </div>
 
-          <div style="display: flex; gap: 12px; justify-content: center;">
+          <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
             <button id="btn-retry" style="
               padding: 12px 24px;
               font-size: 0.9rem;
@@ -1270,7 +1976,7 @@
               cursor: pointer;"
               onmouseover="this.style.background='rgba(255,255,255,0.15)'"
               onmouseout="this.style.background='rgba(255,255,255,0.08)'"
-            >🔄 Try Again</button>
+            >🔄 Build Again</button>
 
             <button id="btn-next" style="
               padding: 12px 28px;
@@ -1283,204 +1989,33 @@
               cursor: pointer;"
               onmouseover="this.style.background='#27ae60'"
               onmouseout="this.style.background='#2ecc71'"
-            >${nextLabel}</button>
+            >${hasNext ? nextLabel : "🎓 Keep Building"}</button>
           </div>
         </div>
       `;
 
       document.body.appendChild(screen);
 
-      // ---- bind buttons with real listeners (no inline onclick) ----
       const retry = screen.querySelector("#btn-retry");
       const next  = screen.querySelector("#btn-next");
 
       if (retry) retry.addEventListener("click", () => location.reload());
 
       if (next) {
-        if (hasNext) {
-          next.addEventListener("click", () => {
-            dismissCompletion();
-            startLesson2();            // defined in lesson2.js
-          });
-        } else {
-          next.textContent = "🎓 Keep Building";
-          next.style.background = "#5dade2";
-          next.style.color = "#0a1a26";
-          next.onmouseover = function () { this.style.background = "#3498db"; };
-          next.onmouseout  = function () { this.style.background = "#5dade2"; };
-          next.addEventListener("click", () => {
-            dismissCompletion();
+        next.addEventListener("click", () => {
+          screen.style.transition = "opacity 0.25s ease";
+          screen.style.opacity = "0";
+          setTimeout(() => {
+            screen.remove();
             window.__lessonComplete = true;
             const canvas = document.getElementById("renderCanvas");
             if (canvas) canvas.requestPointerLock();
-          });
-        }
+          }, 250);
+        });
       }
 
       document.exitPointerLock();
       console.log("[completion] Screen shown — " + timeStr + " / " + starCount + "★");
-    }
-  </script>
-
-  <!-- lesson2.js  — NEW -->
-  <script>
-    // ============================================================
-    // LESSON 2 — "Build the Walls"
-    // Loaded when the player clicks "Next Lesson" on the
-    // foundation victory screen.
-    // ============================================================
-
-    const LESSON2 = (() => {
-      const positions = [];
-      for (let x = -1; x <= 1; x++)
-        for (let y = 3; y <= 4; y++)
-          positions.push({ x, y, z: 5 });   // 3 wide × 2 high wall
-      return {
-        POSITIONS: positions,
-        REQUIRED:  positions.length,        // 6
-      };
-    })();
-
-    let _l2Started = false;
-    let _l2Done    = false;
-    let _l2Placed  = new Set();
-    let _l2Markers = [];
-
-    function startLesson2() {
-      if (_l2Started) return;
-      _l2Started = true;
-      _l2Done    = false;
-      _l2Placed.clear();
-
-      // ---- reset the global lesson state ----
-      window.__lessonComplete = false;   // pause overlay works again
-      _completionShown        = false;   // allow a new victory screen
-      _startTime              = Date.now();
-      taskState.lesson        = 2;
-      taskState.current       = 0;
-
-      _l2ClearMarkers();
-      _l2BuildMarkers();
-      _l2RenderPanel();
-
-      GameEvents.on("blockPlaced",  _l2OnPlaced);
-      GameEvents.on("blockRemoved", _l2OnRemoved);
-
-      // ---- hand control back to the player ----
-      const canvas = document.getElementById("renderCanvas");
-      if (canvas) canvas.requestPointerLock();
-
-      // Safety net: if the browser refused the lock, show the resume prompt
-      setTimeout(() => {
-        if (document.pointerLockElement !== canvas) {
-          const p = document.getElementById("paused-overlay");
-          if (p) p.classList.add("visible");
-        }
-      }, 400);
-
-      console.log("[lesson2] Started — build the walls");
-    }
-
-    function _l2BuildMarkers() {
-      LESSON2.POSITIONS.forEach(p => {
-        const m = BABYLON.MeshBuilder.CreateBox(
-          "wall2_" + p.x + "_" + p.y + "_" + p.z,
-          { width: 1.01, height: 1.01, depth: 1.01 },
-          _playerScene
-        );
-        m.position.set(p.x, p.y, p.z);
-        m.isPickable = false;
-        const mat = new BABYLON.StandardMaterial("wall2_mat", _playerScene);
-        mat.diffuseColor  = new BABYLON.Color3(0.25, 0.65, 1.0);
-        mat.emissiveColor = new BABYLON.Color3(0.10, 0.35, 0.65);
-        mat.alpha         = 0.22;
-        m.material = mat;
-        _l2Markers.push(m);
-      });
-    }
-
-    function _l2ClearMarkers() {
-      _l2Markers.forEach(m => m.dispose());
-      _l2Markers = [];
-    }
-
-    function _l2RenderPanel() {
-      const panel = document.getElementById("task-panel");
-      if (!panel) return;
-      panel.innerHTML = `
-        <div style="font-size:11px; font-weight:700; letter-spacing:0.1em;
-          color:rgba(255,255,255,0.4); text-transform:uppercase;
-          margin-bottom:2px; padding-left:4px;">
-          🧱 Walls Lesson
-        </div>
-
-        <div class="task-card active" id="l2-task-0">
-          <div class="task-header">
-            <span class="task-icon">🧱</span>
-            <span>Raise the Walls</span>
-            <span class="task-status" id="l2-progress">0 / ${LESSON2.REQUIRED}</span>
-          </div>
-          <div class="task-body" style="display:block;">
-            Place <strong>${LESSON2.REQUIRED} blocks</strong> on the glowing blue
-            ghost squares to raise the walls of your house.<br/><br/>
-            <em>Walls sit directly on the foundation and carry the weight of the
-            floor and roof down into it. Each course must be level before the
-            next one goes on.</em><br/><br/>
-            Press <strong>4</strong> for Wood, then <strong>Right Click</strong>
-            the face of a block to place.
-          </div>
-        </div>
-      `;
-    }
-
-    function _l2UpdateProgress() {
-      const el = document.getElementById("l2-progress");
-      if (el) el.textContent = _l2Placed.size + " / " + LESSON2.REQUIRED;
-    }
-
-    function _l2OnPlaced({ x, y, z }) {
-      if (taskState.lesson !== 2 || _l2Done) return;
-      const rx = Math.round(x), ry = Math.round(y), rz = Math.round(z);
-      const ok = LESSON2.POSITIONS.some(p =>
-        p.x === rx && p.y === ry && p.z === rz);
-      if (!ok) return;
-      _l2Placed.add(rx + "," + ry + "," + rz);
-      _l2UpdateProgress();
-      if (_l2Placed.size >= LESSON2.REQUIRED) _l2Finish();
-    }
-
-    function _l2OnRemoved({ x, y, z }) {
-      if (taskState.lesson !== 2 || _l2Done) return;
-      _l2Placed.delete(Math.round(x) + "," + Math.round(y) + "," + Math.round(z));
-      _l2UpdateProgress();
-    }
-
-    function _l2Finish() {
-      _l2Done = true;
-
-      const card = document.getElementById("l2-task-0");
-      if (card) { card.classList.remove("active"); card.classList.add("completed"); }
-      const el = document.getElementById("l2-progress");
-      if (el) el.textContent = "✅";
-
-      _l2ClearMarkers();
-      window.__lessonComplete = true;
-
-      setTimeout(() => {
-        showCompletionScreen({
-          title:    "Lesson 2 Complete!",
-          subtitle: "Walls Lesson — BuildRight",
-          steps:    "2 / 2",
-          hasNext:  false,
-          learned: [
-            "Walls transfer roof and floor loads into the foundation",
-            "Each course of blocks must be level before the next goes on",
-            "Walls are only as straight as the foundation under them"
-          ]
-        });
-      }, 900);
-
-      console.log("[lesson2] Complete 🎉");
     }
   </script>
 
@@ -1546,11 +2081,26 @@
   <script>
     let _gameStarted = false;
 
+    function buildHotbar() {
+      const bar = document.getElementById("hotbar");
+      if (!bar) return;
+      bar.innerHTML = HOTBAR.map((id, i) => {
+        const b   = BLOCK_TYPES[id];
+        const key = (i + 1) % 10;
+        return `<div class="hotbar-slot${i === 0 ? ' active' : ''}" id="slot-${i}">
+            <span>${b.emoji}</span>
+            <span class="slot-label">${key} ${b.short}</span>
+          </div>`;
+      }).join("");
+    }
+
     function initUI(canvas) {
       const startBtn      = document.getElementById("start-btn");
       const lockPrompt    = document.getElementById("lock-prompt");
       const pausedOverlay = document.getElementById("paused-overlay");
       const controlsHint  = document.getElementById("controls-hint");
+
+      buildHotbar();
 
       startBtn.addEventListener("click", () => {
         lockPrompt.classList.add("hidden");
@@ -1572,11 +2122,11 @@
         if (e.code === "KeyB") toggleBook();
       });
 
-      setTimeout(() => controlsHint.classList.add("hidden"), 8000);
+      setTimeout(() => controlsHint.classList.add("hidden"), 9000);
     }
 
     function updateHotbar(activeIndex) {
-      for (let i = 0; i < PHASE_1_HOTBAR.length; i++) {
+      for (let i = 0; i < HOTBAR.length; i++) {
         const slot = document.getElementById("slot-" + i);
         if (!slot) continue;
         slot.classList.toggle("active", i === activeIndex);
@@ -1584,7 +2134,7 @@
     }
 
     function updateBlockIndicator(blockId) {
-      const index = PHASE_1_HOTBAR.indexOf(blockId);
+      const index = HOTBAR.indexOf(blockId);
       if (index !== -1) updateHotbar(index);
     }
   </script>
@@ -1603,8 +2153,8 @@
         scene.clearColor = new BABYLON.Color4(0.47, 0.73, 0.95, 1.0);
 
         scene.fogMode  = BABYLON.Scene.FOGMODE_LINEAR;
-        scene.fogStart = 25;
-        scene.fogEnd   = 48;
+        scene.fogStart = 22;
+        scene.fogEnd   = 44;
         scene.fogColor = new BABYLON.Color3(0.47, 0.73, 0.95);
 
         const amb = new BABYLON.HemisphericLight("amb", new BABYLON.Vector3(0,1,0), scene);
@@ -1623,11 +2173,9 @@
         initWorld(scene);
         initPlayer(scene, canvas);
         initHighlight(scene);
-        initCompletion();     // starts the lesson timer
-
+        initCompletion();
         initBook();
         initTasks(scene);
-
         initUI(canvas);
 
         updateHotbar(0);
