@@ -630,7 +630,8 @@
       return mat;
     }
   </script>
-
+<!-- tasks.js — 25-lesson task system -->
+<script src="tasks.js"></script>
   <!-- world.js -->
   <script>
     const WORLD_CONFIG = {
@@ -880,122 +881,123 @@
     }
   </script>
 
-  <!-- tasks.js -->
-  <script>
-    // ============================================================
-    // TASK SYSTEM — Foundation Lesson
-    // ============================================================
+  <!-- task-ui.js — bridges the 25-lesson task system to the HUD -->
+<script>
+  // ============================================================
+  // Task UI bridge
+  // ============================================================
+  //
+  // - Renders the current step in #task-panel
+  // - Shows progress (X / N) live
+  // - Wire block events from world.js into Tasks
+  // - Advances the panel automatically when Tasks advances
+  //
+  // Requires: window.Tasks (from tasks.js) + GameEvents (from world.js).
+  // ============================================================
 
-    const BUILD_ZONE = [
-      { x: -1, y: 1, z: 5 },
-      { x:  0, y: 1, z: 5 },
-      { x:  1, y: 1, z: 5 },
-    ];
+  // ---------- panel rendering ----------
 
-    const taskState = {
-      lesson:       1,          // ← NEW: which lesson is active
-      current:      0,
-      bookOpened:   false,
-      zoneVisited:  false,
-      dugPositions: new Set(),
-      concretePositions: new Set(),
-      rebarPositions:    new Set(),
-    };
+  const _taskPanelEl = document.getElementById('task-panel');
+  let _lastRenderedStep = -1;
 
-    const GameEvents = {
-      _listeners: {},
-      on(event, fn) {
-        if (!this._listeners[event]) this._listeners[event] = [];
-        this._listeners[event].push(fn);
-      },
-      emit(event, data) {
-        (this._listeners[event] || []).forEach(fn => fn(data));
-      },
-    };
+  function _renderTaskPanel() {
+    if (!_taskPanelEl || !window.Tasks) return;
 
-    let _zoneMarkers = [];
+    const idx  = window.Tasks.getCurrentStepIndex();
+    const step = window.Tasks.getCurrentStep();
+    if (!step) return;
 
-    function _createZoneMarkers(scene) {
-      BUILD_ZONE.forEach(pos => {
-        const marker = BABYLON.MeshBuilder.CreateBox(
-          "zone_" + pos.x + "_" + pos.z,
-          { width: 1.01, height: 0.05, depth: 1.01 },
-          scene
-        );
-        marker.position.set(pos.x, pos.y + 0.5, pos.z);
-        marker.isPickable = false;
-        const mat = new BABYLON.StandardMaterial("zone_mat", scene);
-        mat.diffuseColor  = new BABYLON.Color3(1, 0.63, 0.08);
-        mat.emissiveColor = new BABYLON.Color3(0.8, 0.4, 0.0);
-        mat.alpha         = 0.55;
-        marker.material   = mat;
-        _zoneMarkers.push(marker);
+    _lastRenderedStep = idx;
+
+    const prog = window.Tasks.getStepProgress();
+    const pct  = prog.total > 0 ? Math.round((prog.placed / prog.total) * 100) : 0;
+    const icon = step.title.split(' ')[0] || '📋';
+
+    _taskPanelEl.innerHTML = `
+      <div style="font-size:11px; font-weight:700; letter-spacing:0.1em;
+        color:rgba(255,255,255,0.4); text-transform:uppercase;
+        margin-bottom:2px; padding-left:4px;">
+        📋 Lesson ${idx + 1} / ${window.Tasks.tasks.steps.length}
+      </div>
+
+      <div class="task-card active">
+        <div class="task-header">
+          <span class="task-icon">${icon}</span>
+          <span>${step.title.replace(/^\S+\s*/, '')}</span>
+          <span class="task-status" id="task-progress">${prog.placed} / ${prog.total}</span>
+        </div>
+        <div class="task-body" style="display:block;">
+          ${step.instruction}
+          <div style="margin-top:8px; height:4px; background:rgba(255,255,255,0.08);
+            border-radius:2px; overflow:hidden;">
+            <div style="height:100%; width:${pct}%; background:#e8a020;
+              transition:width 0.25s ease;"></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function _refreshTaskProgress() {
+    const el = document.getElementById('task-progress');
+    if (!el || !window.Tasks) return;
+    const prog = window.Tasks.getStepProgress();
+    el.textContent = prog.placed + ' / ' + prog.total;
+    // also update the bar
+    const bar = el.parentElement.parentElement.querySelector('div > div > div');
+    if (bar) {
+      const pct = prog.total > 0 ? Math.round((prog.placed / prog.total) * 100) : 0;
+      bar.style.width = pct + '%';
+    }
+  }
+
+  // ---------- wire GameEvents → Tasks ----------
+
+  GameEvents.on('blockPlaced', ({ x, y, z, blockId }) => {
+    if (window.Tasks) window.Tasks.addPlacedBlock(x, y, z, blockId);
+    _refreshTaskProgress();
+  });
+
+  GameEvents.on('blockRemoved', ({ x, y, z }) => {
+    if (window.Tasks) window.Tasks.removePlacedBlock(x, y, z);
+    _refreshTaskProgress();
+  });
+
+  // ---------- wire Tasks → UI ----------
+
+  window.Tasks.setOnStepAdvanceCallback((idx, step) => {
+    _renderTaskPanel();
+  });
+
+  window.Tasks.setOnAllTasksComplete(() => {
+    // showCompletionScreen is defined in completion.js
+    if (typeof showCompletionScreen === 'function') {
+      showCompletionScreen({
+        title:    'All 25 Lessons Complete!',
+        subtitle: 'BuildRight — Full Builder Sequence',
+        steps:    '25 / 25',
+        hasNext:  false,
+        learned: [
+          'The full builder sequence from site layout to final inspection',
+          'How each trade depends on the one before it',
+          'Why code and sequence matter more than speed',
+        ],
       });
     }
+  });
 
-    function _removeZoneMarkers() {
-      _zoneMarkers.forEach(m => m.dispose());
-      _zoneMarkers = [];
-    }
+  // Optional: little toast for each step completion
+  window.Tasks.setShowTaskCompleteCallback((title, message) => {
+    console.log('[task-ui]', title, '—', message);
+  });
 
-    function _inZone(x, y, z) {
-      return BUILD_ZONE.some(p =>
-        Math.round(x) === p.x &&
-        Math.round(y) === p.y &&
-        Math.round(z) === p.z
-      );
-    }
+  // ---------- kick off ----------
 
-    function _posKey(x, y, z) {
-      return Math.round(x) + "," + Math.round(y) + "," + Math.round(z);
-    }
-
-    function _completeTask(index) {
-      const card   = document.getElementById("task-" + index);
-      const status = document.getElementById("task-status-" + index);
-      if (!card) return;
-      card.classList.remove("active");
-      card.classList.add("completed");
-      if (status) status.textContent = "✅";
-    }
-
-    function _activateTask(index) {
-      const card = document.getElementById("task-" + index);
-      if (!card) return;
-      card.classList.remove("locked");
-      card.classList.add("active");
-      taskState.current = index;
-    }
-
-    function _showCompletion() {
-      window.__lessonComplete = true;
-
-      const el = document.getElementById("task-complete");
-      if (el) el.style.display = "block";
-      _removeZoneMarkers();
-
-      const flash = document.createElement("div");
-      flash.style.cssText = `
-        position:fixed; inset:0; background:rgba(46,204,113,0.25);
-        z-index:500; pointer-events:none;
-        animation: fadeOut 1.2s ease forwards;
-      `;
-      document.head.insertAdjacentHTML("beforeend",
-        "<style>@keyframes fadeOut{from{opacity:1}to{opacity:0}}</style>"
-      );
-      document.body.appendChild(flash);
-      setTimeout(() => flash.remove(), 1200);
-      setTimeout(() => showCompletionScreen(), 1400);
-    }
-
-    function toggleCard(index) {
-      const card = document.getElementById("task-" + index);
-      if (!card || card.classList.contains("locked")) return;
-      if (card.classList.contains("completed")) {
-        const body = card.querySelector(".task-body");
-        if (body) body.style.display = body.style.display === "block" ? "none" : "block";
-      }
-    }
+  window.addEventListener('load', () => {
+    _renderTaskPanel();
+    console.log('[task-ui] Initialized — 25 lessons ready');
+  });
+</script>
 
     // ---------- lesson-1 checks (guarded so they go quiet in lesson 2) ----------
 
@@ -1300,24 +1302,19 @@
         if (hasNext) {
           next.addEventListener("click", () => {
             dismissCompletion();
-            startLesson2();            // defined in lesson2.js
-          });
-        } else {
-          next.textContent = "🎓 Keep Building";
-          next.style.background = "#5dade2";
-          next.style.color = "#0a1a26";
-          next.onmouseover = function () { this.style.background = "#3498db"; };
-          next.onmouseout  = function () { this.style.background = "#5dade2"; };
-          next.addEventListener("click", () => {
-            dismissCompletion();
-            window.__lessonComplete = true;
+            window.__lessonComplete = false;
             const canvas = document.getElementById("renderCanvas");
             if (canvas) canvas.requestPointerLock();
+          });
+        } else {
+          next.addEventListener("click", () => {
+            dismissCompletion();
+            alert("You have completed all lessons! 🎉");
+            document.exitPointerLock();
           });
         }
       }
 
-      document.exitPointerLock();
       console.log("[completion] Screen shown — " + timeStr + " / " + starCount + "★");
     }
   </script>
@@ -1626,7 +1623,7 @@
         initCompletion();     // starts the lesson timer
 
         initBook();
-        initTasks(scene);
+       
 
         initUI(canvas);
 

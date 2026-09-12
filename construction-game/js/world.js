@@ -81,7 +81,7 @@ function spawnBlock(x, y, z, blockId) {
 
   // Register as data first (mesh = null)
   blockMap.set(key, { blockId, mesh: null });
-
+if (window.Tasks) window.Tasks.addPlacedBlock(x, y, z, blockId);
   // Only render if exposed to air
   if (_isExposed(x, y, z)) {
     _createMesh(x, y, z, blockId);
@@ -89,6 +89,11 @@ function spawnBlock(x, y, z, blockId) {
 
   return blockMap.get(key);
 }
+// in spawnBlock(), after blockMap.set(...)
+if (window.Tasks) window.Tasks.addPlacedBlock(x, y, z, blockId);
+
+// in removeBlock(), after blockMap.delete(...)
+if (window.Tasks) window.Tasks.removePlacedBlock(x, y, z);
 
 // ── placeBlock ──────────────────────────────────────────────
 // Called by player right-click. Places a block and hides any
@@ -126,6 +131,7 @@ function removeBlock(x, y, z) {
     data.mesh = null;
   }
   blockMap.delete(key);
+  if (window.Tasks) window.Tasks.removePlacedBlock(x, y, z);
 
   GameEvents.emit("blockRemoved", { x, y, z });
 
