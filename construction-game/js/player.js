@@ -218,8 +218,8 @@ function _findGround(x, fromY, z) {
 
 // REPLACE WITH:
 function _findGround(x, fromY, z) {
-  for (let y = Math.floor(fromY); y >= -52; y--) {
+  for (let y = Math.floor(fromY); y >= -1; y--) {
     if (getBlock(x, y, z)) return y;
   }
-  return -52;
+  return -1;
 }
