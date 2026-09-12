@@ -6,7 +6,7 @@
   <title>BuildRight — Construction Learning Game</title>
 
   <script src="https://cdn.babylonjs.com/babylon.js"></script>
-
+<script src="tasks.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -630,8 +630,7 @@
       return mat;
     }
   </script>
-<!-- tasks.js — 25-lesson task system -->
-<script src="tasks.js"></script>
+
   <!-- world.js -->
   <script>
     const WORLD_CONFIG = {
@@ -881,213 +880,6 @@
     }
   </script>
 
-  <!-- task-ui.js — bridges the 25-lesson task system to the HUD -->
-<script>
-  // ============================================================
-  // Task UI bridge
-  // ============================================================
-  //
-  // - Renders the current step in #task-panel
-  // - Shows progress (X / N) live
-  // - Wire block events from world.js into Tasks
-  // - Advances the panel automatically when Tasks advances
-  //
-  // Requires: window.Tasks (from tasks.js) + GameEvents (from world.js).
-  // ============================================================
-
-  // ---------- panel rendering ----------
-
-  const _taskPanelEl = document.getElementById('task-panel');
-  let _lastRenderedStep = -1;
-
-  function _renderTaskPanel() {
-    if (!_taskPanelEl || !window.Tasks) return;
-
-    const idx  = window.Tasks.getCurrentStepIndex();
-    const step = window.Tasks.getCurrentStep();
-    if (!step) return;
-
-    _lastRenderedStep = idx;
-
-    const prog = window.Tasks.getStepProgress();
-    const pct  = prog.total > 0 ? Math.round((prog.placed / prog.total) * 100) : 0;
-    const icon = step.title.split(' ')[0] || '📋';
-
-    _taskPanelEl.innerHTML = `
-      <div style="font-size:11px; font-weight:700; letter-spacing:0.1em;
-        color:rgba(255,255,255,0.4); text-transform:uppercase;
-        margin-bottom:2px; padding-left:4px;">
-        📋 Lesson ${idx + 1} / ${window.Tasks.tasks.steps.length}
-      </div>
-
-      <div class="task-card active">
-        <div class="task-header">
-          <span class="task-icon">${icon}</span>
-          <span>${step.title.replace(/^\S+\s*/, '')}</span>
-          <span class="task-status" id="task-progress">${prog.placed} / ${prog.total}</span>
-        </div>
-        <div class="task-body" style="display:block;">
-          ${step.instruction}
-          <div style="margin-top:8px; height:4px; background:rgba(255,255,255,0.08);
-            border-radius:2px; overflow:hidden;">
-            <div style="height:100%; width:${pct}%; background:#e8a020;
-              transition:width 0.25s ease;"></div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
-  function _refreshTaskProgress() {
-    const el = document.getElementById('task-progress');
-    if (!el || !window.Tasks) return;
-    const prog = window.Tasks.getStepProgress();
-    el.textContent = prog.placed + ' / ' + prog.total;
-    // also update the bar
-    const bar = el.parentElement.parentElement.querySelector('div > div > div');
-    if (bar) {
-      const pct = prog.total > 0 ? Math.round((prog.placed / prog.total) * 100) : 0;
-      bar.style.width = pct + '%';
-    }
-  }
-
-  // ---------- wire GameEvents → Tasks ----------
-
-  GameEvents.on('blockPlaced', ({ x, y, z, blockId }) => {
-    if (window.Tasks) window.Tasks.addPlacedBlock(x, y, z, blockId);
-    _refreshTaskProgress();
-  });
-
-  GameEvents.on('blockRemoved', ({ x, y, z }) => {
-    if (window.Tasks) window.Tasks.removePlacedBlock(x, y, z);
-    _refreshTaskProgress();
-  });
-
-  // ---------- wire Tasks → UI ----------
-
-  window.Tasks.setOnStepAdvanceCallback((idx, step) => {
-    _renderTaskPanel();
-  });
-
-  window.Tasks.setOnAllTasksComplete(() => {
-    // showCompletionScreen is defined in completion.js
-    if (typeof showCompletionScreen === 'function') {
-      showCompletionScreen({
-        title:    'All 25 Lessons Complete!',
-        subtitle: 'BuildRight — Full Builder Sequence',
-        steps:    '25 / 25',
-        hasNext:  false,
-        learned: [
-          'The full builder sequence from site layout to final inspection',
-          'How each trade depends on the one before it',
-          'Why code and sequence matter more than speed',
-        ],
-      });
-    }
-  });
-
-  // Optional: little toast for each step completion
-  window.Tasks.setShowTaskCompleteCallback((title, message) => {
-    console.log('[task-ui]', title, '—', message);
-  });
-
-  // ---------- kick off ----------
-
-  window.addEventListener('load', () => {
-    _renderTaskPanel();
-    console.log('[task-ui] Initialized — 25 lessons ready');
-  });
-</script>
-
-    // ---------- lesson-1 checks (guarded so they go quiet in lesson 2) ----------
-
-    function _checkBookOpened() {
-      if (taskState.lesson !== 1) return;         // ← NEW
-      if (taskState.current !== 0 || taskState.bookOpened) return;
-      taskState.bookOpened = true;
-      _completeTask(0);
-      _activateTask(1);
-      console.log("[tasks] Step 1 complete — book opened");
-    }
-
-    function _checkZoneVisited(playerX, playerZ) {
-      if (taskState.lesson !== 1) return;         // ← NEW
-      if (taskState.current !== 1 || taskState.zoneVisited) return;
-      const nearZone = BUILD_ZONE.some(p =>
-        Math.abs(playerX - p.x) < 1.5 &&
-        Math.abs(playerZ - p.z) < 1.5
-      );
-      if (!nearZone) return;
-      taskState.zoneVisited = true;
-      _completeTask(1);
-      _activateTask(2);
-      console.log("[tasks] Step 2 complete — zone reached");
-    }
-
-    function _checkDug(x, y, z) {
-      if (taskState.lesson !== 1) return;         // ← NEW
-      if (taskState.current !== 2) return;
-      if (!_inZone(x, y, z)) return;
-      taskState.dugPositions.add(_posKey(x, y, z));
-      if (taskState.dugPositions.size >= 3) {
-        _completeTask(2);
-        _activateTask(3);
-        console.log("[tasks] Step 3 complete — trench dug");
-      }
-    }
-
-    function _checkConcrete(x, y, z, blockId) {
-      if (taskState.lesson !== 1) return;         // ← NEW
-      if (taskState.current !== 3) return;
-      if (blockId !== "concrete") return;
-      if (!BUILD_ZONE.some(p =>
-        Math.round(x) === p.x && Math.round(z) === p.z
-      )) return;
-      taskState.concretePositions.add(_posKey(x, y, z));
-      if (taskState.concretePositions.size >= 3) {
-        _completeTask(3);
-        _activateTask(4);
-        console.log("[tasks] Step 4 complete — concrete poured");
-      }
-    }
-
-    function _checkRebar(x, y, z, blockId) {
-      if (taskState.lesson !== 1) return;         // ← NEW
-      if (taskState.current !== 4) return;
-      if (blockId !== "iron") return;
-      const onConcrete = [...taskState.concretePositions].some(key => {
-        const [cx, cy, cz] = key.split(",").map(Number);
-        return Math.round(x) === cx &&
-               Math.round(z) === cz &&
-               Math.round(y) === cy + 1;
-      });
-      if (!onConcrete) return;
-      taskState.rebarPositions.add(_posKey(x, y, z));
-      if (taskState.rebarPositions.size >= 3) {
-        _completeTask(4);
-        _showCompletion();
-        console.log("[tasks] Step 5 complete — foundation done! 🎉");
-      }
-    }
-
-    function _zoneProximityCheck() {
-      if (taskState.lesson !== 1) return;         // ← NEW
-      if (taskState.current !== 1 || !_camera) return;
-      _checkZoneVisited(_camera.position.x, _camera.position.z);
-    }
-
-    function initTasks(scene) {
-      _createZoneMarkers(scene);
-      GameEvents.on("blockRemoved", ({ x, y, z }) => _checkDug(x, y, z));
-      GameEvents.on("blockPlaced",  ({ x, y, z, blockId }) => {
-        _checkConcrete(x, y, z, blockId);
-        _checkRebar(x, y, z, blockId);
-      });
-      GameEvents.on("bookOpened", () => _checkBookOpened());
-      scene.onBeforeRenderObservable.add(_zoneProximityCheck);
-      console.log("[tasks] Task system initialized");
-    }
-  </script>
 
   <!-- book.js -->
   <script>
@@ -1299,14 +1091,19 @@
       if (retry) retry.addEventListener("click", () => location.reload());
 
       if (next) {
-        if (hasNext) {
-          next.addEventListener("click", () => {
-            dismissCompletion();
-            window.__lessonComplete = false;
-            const canvas = document.getElementById("renderCanvas");
-            if (canvas) canvas.requestPointerLock();
-          });
-        } else {
+ if (hasNext) {
+  next.addEventListener("click", () => {
+    dismissCompletion();
+    window.__lessonComplete = false;
+    _completionShown = false;
+    if (typeof startLesson2 === "function") {
+      startLesson2();
+    } else {
+      const canvas = document.getElementById("renderCanvas");
+      if (canvas) canvas.requestPointerLock();
+    }
+  });
+} else {
           next.addEventListener("click", () => {
             dismissCompletion();
             alert("You have completed all lessons! 🎉");
@@ -1318,89 +1115,207 @@
       console.log("[completion] Screen shown — " + timeStr + " / " + starCount + "★");
     }
   </script>
-
-  <!-- lesson2.js  — NEW -->
+  <!-- task-ui.js — minimal bridge: renders panel + drives markers + completion -->
   <script>
     // ============================================================
-    // LESSON 2 — "Build the Walls"
-    // Loaded when the player clicks "Next Lesson" on the
-    // foundation victory screen.
+    // Task UI + marker + completion bridge for the two-lesson system
+    // ============================================================
+    //  Handles:
+    //    - Lesson 1 step-by-step panel updates (the hardcoded cards)
+    //    - Orange zone markers for Lesson 1
+    //    - Blue ghost markers for Lesson 2
+    //    - Completion screen chaining Lesson 1 → Lesson 2
     // ============================================================
 
-    const LESSON2 = (() => {
-      const positions = [];
-      for (let x = -1; x <= 1; x++)
-        for (let y = 3; y <= 4; y++)
-          positions.push({ x, y, z: 5 });   // 3 wide × 2 high wall
-      return {
-        POSITIONS: positions,
-        REQUIRED:  positions.length,        // 6
-      };
-    })();
-
-    let _l2Started = false;
-    let _l2Done    = false;
-    let _l2Placed  = new Set();
-    let _l2Markers = [];
-
-    function startLesson2() {
-      if (_l2Started) return;
-      _l2Started = true;
-      _l2Done    = false;
-      _l2Placed.clear();
-
-      // ---- reset the global lesson state ----
-      window.__lessonComplete = false;   // pause overlay works again
-      _completionShown        = false;   // allow a new victory screen
-      _startTime              = Date.now();
-      taskState.lesson        = 2;
-      taskState.current       = 0;
-
-      _l2ClearMarkers();
-      _l2BuildMarkers();
-      _l2RenderPanel();
-
-      GameEvents.on("blockPlaced",  _l2OnPlaced);
-      GameEvents.on("blockRemoved", _l2OnRemoved);
-
-      // ---- hand control back to the player ----
-      const canvas = document.getElementById("renderCanvas");
-      if (canvas) canvas.requestPointerLock();
-
-      // Safety net: if the browser refused the lock, show the resume prompt
-      setTimeout(() => {
-        if (document.pointerLockElement !== canvas) {
-          const p = document.getElementById("paused-overlay");
-          if (p) p.classList.add("visible");
-        }
-      }, 400);
-
-      console.log("[lesson2] Started — build the walls");
+    // ---------- panel helpers (Lesson 1 hardcoded cards) ----------
+    function _setCardStatus(id, symbol) {
+      const el = document.getElementById("task-status-" + id);
+      if (el) el.textContent = symbol;
+    }
+    function _activateTask(id) {
+      const c = document.getElementById("task-" + id);
+      if (!c) return;
+      c.classList.remove("locked");
+      c.classList.add("active");
+    }
+    function _completeTask(id) {
+      const c = document.getElementById("task-" + id);
+      if (c) { c.classList.remove("active"); c.classList.add("completed"); }
+      _setCardStatus(id, "✅");
     }
 
-    function _l2BuildMarkers() {
-      LESSON2.POSITIONS.forEach(p => {
+    // ---------- lesson state (steps 1..5 of Foundation) ----------
+    // The order the hardcoded panel expects:
+    //  0: read book   1: reach zone   2: dig   3: concrete   4: rebar
+    let _step = 0;
+    let _bookOpened = false;
+    let _zoneVisited = false;
+    const _dug       = new Set();
+    const _concrete  = new Set();
+    const _rebar     = new Set();
+
+    // ---------- orange zone markers ----------
+    let _zoneMarkers = [];
+    function _createZoneMarkers(scene) {
+      window.Tasks.FOUNDATION.zone.forEach((p, i) => {
         const m = BABYLON.MeshBuilder.CreateBox(
-          "wall2_" + p.x + "_" + p.y + "_" + p.z,
+          "zoneMarker_" + i,
+          { width: 1.0, height: 0.06, depth: 1.0 },
+          scene
+        );
+        // Sit flat on top of the grass at that cell
+        m.position.set(p.x, p.y - 0.5, p.z);
+        m.isPickable = false;
+        const mat = new BABYLON.StandardMaterial("zoneMat_" + i, scene);
+        mat.diffuseColor  = new BABYLON.Color3(1.0, 0.55, 0.0);
+        mat.emissiveColor = new BABYLON.Color3(1.0, 0.45, 0.0);
+        mat.alpha         = 0.85;
+        mat.disableLighting = true;
+        m.material = mat;
+        _zoneMarkers.push(m);
+      });
+      console.log("[tasks] Zone markers created:", _zoneMarkers.length);
+    }
+
+    function _clearZoneMarkers() {
+      _zoneMarkers.forEach(m => m.dispose());
+      _zoneMarkers = [];
+    }
+
+    // ---------- step checks ----------
+    function _checkBookOpened() {
+      if (_step !== 0 || _bookOpened) return;
+      _bookOpened = true;
+      _completeTask(0);
+      _activateTask(1);
+      _step = 1;
+      console.log("[tasks] Step 1 — book opened");
+    }
+
+    function _checkZoneVisited(px, pz) {
+      if (_step !== 1 || _zoneVisited) return;
+      const near = window.Tasks.FOUNDATION.zone.some(p =>
+        Math.abs(px - p.x) < 1.5 && Math.abs(pz - p.z) < 1.5
+      );
+      if (!near) return;
+      _zoneVisited = true;
+      _completeTask(1);
+      _activateTask(2);
+      _step = 2;
+      console.log("[tasks] Step 2 — zone reached");
+    }
+
+    function _inZone(x, z) {
+      return window.Tasks.FOUNDATION.zone.some(p =>
+        Math.round(x) === p.x && Math.round(z) === p.z
+      );
+    }
+
+    function _checkDug(x, y, z) {
+      if (_step !== 2) return;
+      if (!_inZone(x, z)) return;
+      _dug.add(Math.round(x) + "," + Math.round(y) + "," + Math.round(z));
+      if (_dug.size >= 4) {
+        _completeTask(2);
+        _activateTask(3);
+        _step = 3;
+        console.log("[tasks] Step 3 — trench dug");
+      }
+    }
+
+    function _checkConcrete(x, y, z, blockId) {
+      if (_step !== 3) return;
+      if (blockId !== "concrete") return;
+      if (!_inZone(x, z)) return;
+      _concrete.add(Math.round(x) + "," + Math.round(y) + "," + Math.round(z));
+      if (_concrete.size >= 4) {
+        _completeTask(3);
+        _activateTask(4);
+        _step = 4;
+        console.log("[tasks] Step 4 — concrete poured");
+      }
+    }
+
+    function _checkRebar(x, y, z, blockId) {
+      if (_step !== 4) return;
+      if (blockId !== "iron") return;
+      const onConcrete = [..._concrete].some(key => {
+        const [cx, cy, cz] = key.split(",").map(Number);
+        return Math.round(x) === cx && Math.round(z) === cz && Math.round(y) === cy + 1;
+      });
+      if (!onConcrete) return;
+      _rebar.add(Math.round(x) + "," + Math.round(y) + "," + Math.round(z));
+      if (_rebar.size >= 4) {
+        _completeTask(4);
+        const done = document.getElementById("task-complete");
+        if (done) done.style.display = "block";
+        window.__lessonComplete = true;
+
+        setTimeout(() => {
+          showCompletionScreen({
+            title:    "Lesson 1 Complete!",
+            subtitle: "Foundation Lesson — BuildRight",
+            steps:    "5 / 5",
+            hasNext:  true,
+            nextLabel: "Next Lesson →",
+            learned: [
+              "Why foundations must be dug into stable ground",
+              "Why concrete handles compression forces",
+              "Why rebar handles tension so concrete doesn't crack",
+              "How reinforced concrete is built layer by layer",
+            ],
+          });
+        }, 900);
+
+        console.log("[tasks] Step 5 — foundation done 🎉");
+      }
+    }
+
+    function _zoneProximityCheck() {
+      if (_step !== 1 || !window._camera) return;
+      _checkZoneVisited(_camera.position.x, _camera.position.z);
+    }
+
+    // ---------- the actual init ----------
+    function initTasks(scene) {
+      _createZoneMarkers(scene);
+      GameEvents.on("blockRemoved", ({ x, y, z }) => {
+        if (window.Tasks.getCurrentStepIndex() === 0) _checkDug(x, y, z);
+      });
+      GameEvents.on("blockPlaced", ({ x, y, z, blockId }) => {
+        if (window.Tasks.getCurrentStepIndex() === 0) {
+          _checkConcrete(x, y, z, blockId);
+          _checkRebar(x, y, z, blockId);
+        }
+      });
+      GameEvents.on("bookOpened", () => _checkBookOpened());
+      scene.onBeforeRenderObservable.add(_zoneProximityCheck);
+      console.log("[tasks] initTasks complete");
+    }
+
+    // ---------- lesson 2: blue ghost markers ----------
+    let _l2Markers = [];
+    function _l2BuildMarkers() {
+      window.Tasks.tasks.steps[1].requiredBlocks.forEach((p, i) => {
+        const m = BABYLON.MeshBuilder.CreateBox(
+          "wall2_" + i,
           { width: 1.01, height: 1.01, depth: 1.01 },
           _playerScene
         );
         m.position.set(p.x, p.y, p.z);
         m.isPickable = false;
-        const mat = new BABYLON.StandardMaterial("wall2_mat", _playerScene);
+        const mat = new BABYLON.StandardMaterial("wall2_mat_" + i, _playerScene);
         mat.diffuseColor  = new BABYLON.Color3(0.25, 0.65, 1.0);
         mat.emissiveColor = new BABYLON.Color3(0.10, 0.35, 0.65);
-        mat.alpha         = 0.22;
+        mat.alpha         = 0.25;
         m.material = mat;
         _l2Markers.push(m);
       });
     }
-
     function _l2ClearMarkers() {
       _l2Markers.forEach(m => m.dispose());
       _l2Markers = [];
     }
-
     function _l2RenderPanel() {
       const panel = document.getElementById("task-panel");
       if (!panel) return;
@@ -1410,60 +1325,62 @@
           margin-bottom:2px; padding-left:4px;">
           🧱 Walls Lesson
         </div>
-
         <div class="task-card active" id="l2-task-0">
           <div class="task-header">
             <span class="task-icon">🧱</span>
             <span>Raise the Walls</span>
-            <span class="task-status" id="l2-progress">0 / ${LESSON2.REQUIRED}</span>
+            <span class="task-status" id="l2-progress">0 / 8</span>
           </div>
           <div class="task-body" style="display:block;">
-            Place <strong>${LESSON2.REQUIRED} blocks</strong> on the glowing blue
-            ghost squares to raise the walls of your house.<br/><br/>
-            <em>Walls sit directly on the foundation and carry the weight of the
-            floor and roof down into it. Each course must be level before the
-            next one goes on.</em><br/><br/>
+            Place <strong>8 blocks</strong> on the glowing blue ghost squares.<br/><br/>
+            <em>Walls sit on the foundation and carry the load of the
+            floor and roof down into it.</em><br/><br/>
             Press <strong>4</strong> for Wood, then <strong>Right Click</strong>
-            the face of a block to place.
+            a face to place.
           </div>
         </div>
       `;
     }
 
-    function _l2UpdateProgress() {
-      const el = document.getElementById("l2-progress");
-      if (el) el.textContent = _l2Placed.size + " / " + LESSON2.REQUIRED;
-    }
+    function startLesson2() {
+      window.__lessonComplete = false;
+      _completionShown        = false;
+      _startTime              = Date.now();
 
-    function _l2OnPlaced({ x, y, z }) {
-      if (taskState.lesson !== 2 || _l2Done) return;
-      const rx = Math.round(x), ry = Math.round(y), rz = Math.round(z);
-      const ok = LESSON2.POSITIONS.some(p =>
-        p.x === rx && p.y === ry && p.z === rz);
-      if (!ok) return;
-      _l2Placed.add(rx + "," + ry + "," + rz);
-      _l2UpdateProgress();
-      if (_l2Placed.size >= LESSON2.REQUIRED) _l2Finish();
-    }
-
-    function _l2OnRemoved({ x, y, z }) {
-      if (taskState.lesson !== 2 || _l2Done) return;
-      _l2Placed.delete(Math.round(x) + "," + Math.round(y) + "," + Math.round(z));
-      _l2UpdateProgress();
-    }
-
-    function _l2Finish() {
-      _l2Done = true;
-
-      const card = document.getElementById("l2-task-0");
-      if (card) { card.classList.remove("active"); card.classList.add("completed"); }
-      const el = document.getElementById("l2-progress");
-      if (el) el.textContent = "✅";
-
+      _clearZoneMarkers();
       _l2ClearMarkers();
-      window.__lessonComplete = true;
+      _l2BuildMarkers();
+      _l2RenderPanel();
 
-      setTimeout(() => {
+      // Swap the panel content; our HTML cards are gone now.
+      // Reset the Tasks system to step 2 (walls)
+      window.Tasks.tasks.currentStep = 1;
+      window.Tasks.tasks.isComplete  = false;
+      window.Tasks.resetPlacedBlocks();
+
+      const canvas = document.getElementById("renderCanvas");
+      if (canvas) canvas.requestPointerLock();
+      console.log("[lesson2] Started");
+    }
+
+    // Refresh the l2 progress counter on every block event
+    GameEvents.on("blockPlaced", () => {
+      if (window.Tasks.getCurrentStepIndex() !== 1) return;
+      const prog = window.Tasks.getStepProgress();
+      const el = document.getElementById("l2-progress");
+      if (el) el.textContent = prog.placed + " / " + prog.total;
+    });
+    GameEvents.on("blockRemoved", () => {
+      if (window.Tasks.getCurrentStepIndex() !== 1) return;
+      const prog = window.Tasks.getStepProgress();
+      const el = document.getElementById("l2-progress");
+      if (el) el.textContent = prog.placed + " / " + prog.total;
+    });
+
+    // Listen for Tasks completion of step 2 → show final screen
+    window.Tasks.setOnAllTasksComplete(() => {
+      if (typeof _l2ClearMarkers === "function") _l2ClearMarkers();
+      if (typeof showCompletionScreen === "function") {
         showCompletionScreen({
           title:    "Lesson 2 Complete!",
           subtitle: "Walls Lesson — BuildRight",
@@ -1472,13 +1389,13 @@
           learned: [
             "Walls transfer roof and floor loads into the foundation",
             "Each course of blocks must be level before the next goes on",
-            "Walls are only as straight as the foundation under them"
-          ]
+            "Walls are only as straight as the foundation under them",
+          ],
         });
-      }, 900);
+      }
+    });
 
-      console.log("[lesson2] Complete 🎉");
-    }
+    console.log("[task-ui] Two-lesson bridge loaded ✅");
   </script>
 
   <!-- highlight.js -->
@@ -1623,7 +1540,7 @@
         initCompletion();     // starts the lesson timer
 
         initBook();
-       
+        initTasks(scene);
 
         initUI(canvas);
 
