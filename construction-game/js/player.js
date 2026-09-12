@@ -208,9 +208,18 @@ function _update() {
   pos.z = Math.max(-half + 1, Math.min(half - 1, pos.z));
 }
 
-function _findGroundBelow(x, fromY, z) {
-  for (let y = Math.floor(fromY); y >= WORLD_CONFIG.UNDERGROUND; y--) {
+// FIND THIS:
+function _findGround(x, fromY, z) {
+  for (let y = Math.floor(fromY); y >= -2; y--) {
     if (getBlock(x, y, z)) return y;
   }
-  return WORLD_CONFIG.UNDERGROUND - 1;
+  return -2;
+}
+
+// REPLACE WITH:
+function _findGround(x, fromY, z) {
+  for (let y = Math.floor(fromY); y >= -52; y--) {
+    if (getBlock(x, y, z)) return y;
+  }
+  return -52;
 }
